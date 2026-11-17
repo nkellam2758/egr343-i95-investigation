@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The 12-Day Investigation — EGR 343</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{--maroon:#8C1D40;--gold:#FFC627;--ink:#191919;--muted:#5c5c5c;--line:#d9d9d9;--bg:#fafafa;--ok:#2e7d32;--bad:#b00020}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Roboto,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  header{background:var(--maroon);color:#fff;padding:14px 20px;border-bottom:5px solid var(--gold)}
+  header h1{margin:0;font-size:1.3rem}
+  header p{margin:2px 0 0;font-size:.9rem;opacity:.9}
+  nav{display:flex;flex-wrap:wrap;gap:6px;padding:10px 20px;background:#fff;border-bottom:1px solid var(--line)}
+  nav button{border:1px solid var(--line);background:#fff;border-radius:16px;padding:5px 12px;font:inherit;font-size:.85rem;cursor:pointer}
+  nav button.on{background:var(--maroon);color:#fff;border-color:var(--maroon)}
+  nav button.done::after{content:" ✓";color:var(--ok)}
+  nav button.on.done::after{color:var(--gold)}
+  nav button:disabled{opacity:.4;cursor:not-allowed}
+  main{max-width:920px;margin:0 auto;padding:20px}
+  h2{color:var(--maroon);margin-top:0}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+  .btn{background:var(--maroon);color:#fff;border:0;border-radius:8px;padding:9px 16px;font:inherit;font-weight:500;cursor:pointer}
+  .btn.alt{background:#fff;color:var(--maroon);border:1px solid var(--maroon)}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  input[type=text],input[type=number],select,textarea{font:inherit;padding:7px 9px;border:1px solid #bbb;border-radius:6px;width:100%}
+  textarea{min-height:80px}
+  label{font-weight:500;display:block;margin:8px 0 4px}
+  .note{font-size:.85rem;color:var(--muted)}
+  .msg{font-weight:500;margin-top:6px}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  .people{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+  .person{text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px;cursor:pointer;font:inherit}
+  .person.on{border:2px solid var(--maroon)}
+  .person b{display:block;color:var(--maroon)}
+  .q{display:block;width:100%;text-align:left;margin:6px 0;background:#f4eef0;border:1px solid #e3d3d9;border-radius:8px;padding:8px 10px;font:inherit;cursor:pointer}
+  .q.asked{background:#fff;color:var(--muted)}
+  .say{border-left:4px solid var(--gold);background:#fffbea;padding:8px 12px;margin:8px 0;border-radius:0 8px 8px 0}
+  .ev{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;margin:4px;font-size:.88rem;max-width:100%}
+  .ev .id{font-weight:700;color:var(--maroon);margin-right:4px}
+  .ev.calc{border-color:var(--gold);background:#fffbea}
+  .chip{cursor:pointer;user-select:none}
+  .chip.sel{background:var(--maroon);color:#fff;border-color:var(--maroon)}
+  .chip.sel .id{color:var(--gold)}
+  table{border-collapse:collapse;margin:8px 0}
+  td,th{border:1px solid var(--line);padding:4px 10px;text-align:center}
+  th{background:#f4eef0}
+  .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(max-width:640px){.row{grid-template-columns:1fr}}
+  .ans{display:grid;grid-template-columns:1fr 160px 60px;gap:8px;align-items:center;margin:6px 0}
+  .ans .st{font-size:1.1rem}
+  .rc{border:2px solid #e3d3d9;border-radius:10px;padding:12px;margin-bottom:12px;background:#fff}
+  .rc h3{margin:0 0 6px;color:var(--maroon);font-size:1rem}
+  .code{font-family:ui-monospace,Menlo,monospace;font-size:1.4rem;letter-spacing:2px;background:var(--maroon);color:var(--gold);padding:6px 14px;border-radius:8px;display:inline-block}
+  .ending{background:#2b2b2b;color:#eee;border-radius:10px;padding:14px 16px;margin:10px 0}
+  #report pre{white-space:pre-wrap;font-family:inherit}
+  .hidden{display:none}
+  @media print{header,nav,.noprint{display:none!important}body{background:#fff}.card{border:0}}
+</style>
+</head>
+<body>
+<header>
+  <h1>The 12-Day Investigation</h1>
+  <p>EGR 343 Mechanics of Materials · A positive root cause analysis of the 2023 I-95 collapse and rebuild</p>
+</header>
+<nav id="nav"></nav>
+<main id="main"></main>
+
+<script>
+/* ================= DATA ================= */
+const STAGES=[["start","1. Briefing"],["interviews","2. Interviews"],["lab","3. Lab bench"],["board","4. Root cause board"],["counter","5. What if?"],["reflect","6. Reflection"],["report","7. Report"]];
+
+const CARDS={
+ E1:"Governor declared a disaster emergency within 24 hours, speeding up permitting and procurement.",
+ E2:"Heat from the gasoline fire weakened the steel girders; the northbound span collapsed and the southbound span was compromised.",
+ E3:"Engineers judged the southbound span unsafe and chose full demolition instead of repair.",
+ E4:"The team built a temporary roadway on fill so traffic could return while the permanent bridge was designed.",
+ E5:"Mechanically stabilized earth (MSE) walls held the fill in place under regular and truck traffic.",
+ E6:"The fill was foamed glass aggregate: very lightweight and made from recycled glass.",
+ E7:"Because it is so light, the foamed glass put little load on the ground below and needed no long settling time.",
+ E8:"A local manufacturer ramped up production to deliver about 8,000 cubic yards of foamed glass.",
+ E9:"Crews worked around the clock, and the project stayed ahead of schedule.",
+ E10:"State and federal agencies, contractors, suppliers, and labor unions coordinated on one plan.",
+ E11:"When rain threatened the paving schedule, the team borrowed a NASCAR track dryer to dry the site.",
+ E12:"PennDOT livestreamed construction so anyone could watch progress.",
+ E13:"Regular press briefings, community meetings, and a hotline let residents ask questions and voice concerns."
+};
+
+const PEOPLE=[
+ {id:"eng",name:"Dana Ruiz",role:"Bridge engineer (state DOT)",qs:[
+   ["What did the fire actually do to the bridge?","A tanker with about 8,500 gallons of gasoline burned right under the deck. Steel doesn't have to melt to fail. It just has to get hot enough to lose strength and stiffness. The northbound girders sagged and the span came down. The southbound side was still standing, but it had been cooked too.","E2"],
+   ["Why tear down the southbound side if it was still standing?","Standing isn't the same as safe. Once steel has been through a fire like that, you can't trust its properties without testing, and we didn't have months to test. We took it down. You'll see why on the lab bench.","E3"],
+   ["Why not just build a new bridge right away?","A permanent bridge takes design, fabrication, and time. 160,000 vehicles a day can't wait for that. So we split the problem: fill the gap now with a temporary roadway, and build the permanent structure afterward.","E4"],
+   ["What keeps a big pile of fill from spreading out?","Mechanically stabilized earth walls: facing panels tied back into the fill with reinforcing strips. The strips carry tension, the fill carries compression, and together they act like one block.","E5"]]},
+ {id:"sup",name:"Sam Okafor",role:"Rep, local foamed glass manufacturer",qs:[
+   ["What is foamed glass aggregate?","Recycled glass, ground up, heated, and foamed so it's full of tiny bubbles. It looks like gravel but weighs a fraction as much.","E6"],
+   ["Why does it matter that it's light?","Everything under a fill has to carry its weight: the ground, old utilities, whatever's down there. Heavy soil compresses the ground and you wait for it to settle. Ours is so light that the ground barely notices, so you can build on it almost right away. Run the numbers yourself and you'll see.","E7"],
+   ["Could you even make enough in time?","We're local, so we ran the plant hard and trucked it in fast. In the end it was about 8,000 cubic yards.","E8"]]},
+ {id:"crew",name:"Pat Kowalski",role:"Crew foreman",qs:[
+   ["What was the schedule like?","Around the clock. Shifts overlapped so the work never stopped, and we finished ahead of schedule.","E9"],
+   ["Who was out there?","Everybody: the state, federal people, contractors, the union trades, the suppliers. Usually those groups hand work off to each other. Here we were all looking at the same plan at the same time.","E10"],
+   ["What happened when it rained?","Rain is bad news when you're trying to pave. Somebody thought of the NASCAR track dryers, the trucks they use to dry a racetrack. We borrowed one and kept going.","E11"]]},
+ {id:"com",name:"Jordan Lee",role:"Communications director",qs:[
+   ["How did you keep the public informed?","We put a camera on the site and livestreamed it. Anyone could watch the work happen, day or night.","E12"],
+   ["What about the people who live nearby?","Regular press briefings, community meetings, and a hotline. People were stuck in detours, and they deserved answers, not just a press release.","E13"]]}
+];
+
+const ROOTS=[
+ ["R1","Leaders removed delays without removing safety checks"],
+ ["R2","Engineers matched the solution to the real constraint and checked it with mechanics"],
+ ["R3","Agencies, suppliers, and workers acted as one team"],
+ ["R4","Openness with the public built trust and patience"],
+ ["R5","Local resources and creativity filled the gaps"],
+ ["R6","Other (write your own)"]
+];
+const STRENGTHS=["Leadership","Responsibility","Prudence (practical wisdom)","Integrity","Honesty","Teamwork","Humility","Resourcefulness","Perseverance","Courage","Empathy","Environmental stewardship"];
+
+/* Eurocode-style effective yield strength reduction factors for carbon steel */
+const KY={20:1.00,400:1.00,500:0.78,600:0.47,700:0.23,800:0.11};
+function ky(T){const ks=Object.keys(KY).map(Number).sort((a,b)=>a-b);for(let i=0;i<ks.length-1;i++){if(T>=ks[i]&&T<=ks[i+1]){const f=(T-ks[i])/(ks[i+1]-ks[i]);return KY[ks[i]]+f*(KY[ks[i+1]]-KY[ks[i]]);}}return KY[800];}
+
+/* ================= SEEDED PARAMETERS ================= */
+function norm(n){return (n||"").trim().toLowerCase().replace(/\s+/g," ");}
+function fnv(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h>>>0;}
+function rng(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function params(name){
+  const r=rng(fnv("i95|"+norm(name)));
+  const L=60+2*Math.floor(r()*11);                // ft
+  const w=Math.round((2.0+0.1*Math.floor(r()*11))*10)/10; // kip/ft
+  const M=w*L*L/8;                                  // kip-ft
+  const target=24+r()*6;                            // ksi
+  const S=Math.round(M*12/target/10)*10;            // in^3
+  const T=[600,650,700][Math.floor(r()*3)];
+  const H=16+Math.floor(r()*9);                     // ft
+  const sig=M*12/S, FS20=50/sig, FST=50*ky(T)/sig;
+  return {L,w,S,T,H,M,sig,FS20,FST,soil:120*H,fg:15*H,red:100*(1-15/120)};
+}
+function code(name){
+  const p=params(name);const h=fnv("I95v1|"+norm(name)+"|"+p.L+p.w+p.S+p.T+p.H);
+  const h2=fnv(String(h)+"|kellam");
+  const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="";let x=h,y=h2;
+  for(let i=0;i<4;i++){s+=A[x%32];x=Math.floor(x/32);}s+="-";
+  for(let i=0;i<4;i++){s+=A[y%32];y=Math.floor(y/32);}return s;
+}
+
+/* ================= STATE ================= */
+const KEY="egr343-i95-v1";
+let S={stage:"start",name:"",cards:[],asked:{},person:"eng",lab:{},tries:{},labDone:{g:false,f:false},
+  board:[{root:"",own:"",cards:[],str:"",why:""},{root:"",own:"",cards:[],str:"",why:""},{root:"",own:"",cards:[],str:"",why:""}],
+  cf:{pick:"",why:""},refl:""};
+try{const s=localStorage.getItem(KEY);if(s)S=Object.assign(S,JSON.parse(s));}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+function P(){return params(S.name);}
+function has(c){return S.cards.includes(c);}
+function give(c){if(!has(c))S.cards.push(c);}
+function words(t){return (t||"").trim().split(/\s+/).filter(Boolean).length;}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function fmt(x,d=3){return Number(x.toPrecision(d)).toLocaleString("en-US",{maximumFractionDigits:3});}
+
+/* ================= COMPLETION LOGIC ================= */
+const totalQs=PEOPLE.reduce((a,p)=>a+p.qs.length,0);
+function done(st){
+  switch(st){
+    case"start":return !!S.name.trim()&&has("E1");
+    case"interviews":return Object.keys(S.asked).length>=totalQs;
+    case"lab":return S.labDone.g&&S.labDone.f;
+    case"board":return boardErrors().length===0;
+    case"counter":return !!S.cf.pick&&words(S.cf.why)>=40;
+    case"reflect":return words(S.refl)>=40;
+    case"report":return false;
+  }
+}
+function unlocked(st){const i=STAGES.findIndex(s=>s[0]===st);for(let j=0;j<i;j++){if(!done(STAGES[j][0]))return false;}return true;}
+
+function calcCards(){
+  const p=P(),c={};
+  if(S.labDone.g)c.C1=`Your lab: a girder with FS = ${fmt(p.FS20)} at room temperature drops to FS = ${fmt(p.FST)} at ${p.T}°C.`;
+  if(S.labDone.f)c.C2=`Your lab: ${p.H} ft of fill puts ${fmt(p.soil)} psf on the ground as soil, but only ${fmt(p.fg)} psf as foamed glass.`;
+  return c;
+}
+function allCards(){return Object.assign({},Object.fromEntries(S.cards.map(k=>[k,CARDS[k]])),calcCards());}
+function rootLabel(r){if(r.root==="R6")return r.own.trim()||"(your own root cause)";const f=ROOTS.find(x=>x[0]===r.root);return f?f[1]:"";}
+function boardErrors(){
+  const e=[];const roots=S.board.map(r=>r.root==="R6"?"R6:"+norm(r.own):r.root);
+  S.board.forEach((r,i)=>{
+    const n=i+1;
+    if(!r.root)e.push(`Root cause ${n}: choose a root cause.`);
+    if(r.root==="R6"&&words(r.own)<3)e.push(`Root cause ${n}: write out your own root cause.`);
+    if(r.cards.length<2)e.push(`Root cause ${n}: link at least 2 evidence cards.`);
+    if(!r.str)e.push(`Root cause ${n}: choose a character strength.`);
+    if(words(r.why)<15)e.push(`Root cause ${n}: explain the chain in at least 15 words (${words(r.why)} so far).`);
+  });
+  if(new Set(roots.filter(Boolean)).size<roots.filter(Boolean).length)e.push("Each root cause must be different.");
+  if(!S.board.some(r=>r.cards.some(c=>c[0]==="C")))e.push("At least one root cause must be backed by your own lab result (card C1 or C2).");
+  return e;
+}
+
+/* ================= RENDER ================= */
+function go(st){S.stage=st;save();render();window.scrollTo(0,0);}
+function render(){
+  const nav=document.getElementById("nav");
+  nav.innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}</button>`).join("");
+  const m=document.getElementById("main");
+  m.innerHTML=({start:vStart,interviews:vInt,lab:vLab,board:vBoard,counter:vCounter,reflect:vReflect,report:vReport}[S.stage])();
+  if(S.stage==="board")wireBoard();
+}
+function next(st){const i=STAGES.findIndex(s=>s[0]===st);const n=STAGES[i+1];return n?`<p><button class="btn" ${done(st)?"":"disabled"} onclick="go('${n[0]}')">Continue to ${n[1].replace(/^\d+\.\s/,"")} →</button></p>`:"";}
+function evHTML(id,txt,extra=""){return `<span class="ev ${id[0]==="C"?"calc":""} ${extra}" data-id="${id}"><span class="id">${id}</span>${esc(txt)}</span>`;}
+
+function vStart(){
+  return `<div class="card"><h2>Your assignment</h2>
+  <p>On June 11, 2023, a tanker truck carrying 8,500 gallons of gasoline overturned and caught fire under Interstate 95 in Northeast Philadelphia. The northbound span collapsed and the southbound span was compromised. About 160,000 vehicles a day used this stretch.</p>
+  <p>Twelve days later, on June 23, I-95 reopened on temporary lanes.</p>
+  <p>Most engineering investigations ask <i>why did this fail?</i> You've been hired by the state's after-action review board to ask the opposite: <b>why did this response succeed, and what would have broken it?</b> That's a <b>positive root cause analysis</b>.</p>
+  <ol><li><b>Interview</b> four people and collect evidence cards.</li><li><b>Run the numbers</b> at the lab bench to unlock your own evidence.</li><li><b>Build a root cause board</b>: evidence → root cause → character strength.</li><li><b>Test it</b> by removing one root cause and seeing what happens.</li><li><b>Reflect</b>, then submit your report and completion code to Canvas.</li></ol>
+  <label for="nm">Your full name, exactly as it appears in Canvas</label>
+  <input id="nm" type="text" value="${esc(S.name)}" oninput="S.name=this.value;save()" onchange="render()">
+  <p class="note">Your name sets your lab numbers, so every student's numbers are different. Your progress is saved in this browser.</p>
+  ${has("E1")?`<p>Your first evidence card:</p>${evHTML("E1",CARDS.E1)}`:`<p><button class="btn" onclick="if(!S.name.trim()){return;}give('E1');save();render()">Open the case file</button></p>`}
+  <p class="note">The interview characters are fictional composites. Their facts come from the case study <i>12 Days: A Case Study of the Exemplary Response to the I-95 Bridge Collapse in Philadelphia</i>. The lab numbers are simplified for class and are not the real bridge's values.</p>
+  </div>${next("start")}`;
+}
+
+function vInt(){
+  const p=PEOPLE.find(x=>x.id===S.person);
+  return `<div class="card"><h2>Interviews</h2><p>Ask every question. Each answer adds an evidence card to your notebook. (${Object.keys(S.asked).length} of ${totalQs} asked)</p>
+  <div class="people">${PEOPLE.map(x=>{const n=x.qs.filter((q,i)=>S.asked[x.id+i]).length;return `<button class="person ${x.id===S.person?"on":""}" onclick="S.person='${x.id}';save();render()"><b>${x.name}</b>${x.role}<br><span class="note">${n}/${x.qs.length} questions</span></button>`}).join("")}</div></div>
+  <div class="card"><h2 style="font-size:1.1rem">${p.name}, ${p.role}</h2>
+  ${p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" onclick="ask('${p.id}',${i})">${S.asked[k]?"✓ ":"❓ "}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
+  </div>
+  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next("interviews")}`;
+}
+function ask(pid,i){S.asked[pid+i]=1;give(PEOPLE.find(x=>x.id===pid).qs[i][2]);save();render();}
+
+function labRow(key,label,unit){
+  const v=S.lab[key]??"";const st=S.lab[key+"_ok"];
+  return `<div class="ans"><label for="${key}" style="margin:0">${label}</label><input id="${key}" type="number" step="any" value="${v}" oninput="S.lab['${key}']=this.value;save()"><span class="st">${st===true?'<span class="ok">✓</span>':st===false?'<span class="bad">✗</span>':""} ${unit}</span></div>`;
+}
+function vLab(){
+  const p=P();
+  return `<div class="card"><h2>Lab bench</h2><p>Dana and Sam both said "run the numbers." Each part unlocks an evidence card built from <b>your</b> results. You get unlimited attempts, and the report records how many you used. Answers within 2% count as correct.</p></div>
+  <div class="card"><h3 style="margin-top:0">Part A: Is "still standing" the same as "safe"?</h3>
+  <p>Model one southbound girder as a <b>simply supported steel beam</b> with span <b>L = ${p.L} ft</b>, carrying a uniform load of <b>w = ${p.w} kip/ft</b> (dead load plus traffic). Its elastic section modulus is <b>S = ${p.S} in³</b>, and the steel's room-temperature yield strength is <b>F<sub>y</sub> = 50 ksi</b>.</p>
+  <p>In a fire, steel's effective yield strength drops to k<sub>y</sub>·F<sub>y</sub>. Use the table below, interpolating linearly. Assume the girder reached <b>${p.T}°C</b>.</p>
+  <table><tr><th>T (°C)</th>${Object.keys(KY).map(t=>`<td>${t}</td>`).join("")}</tr><tr><th>k<sub>y</sub></th>${Object.values(KY).map(k=>`<td>${k.toFixed(2)}</td>`).join("")}</tr></table>
+  ${labRow("gM","1. Maximum bending moment, M<sub>max</sub>","kip·ft")}
+  ${labRow("gS","2. Maximum bending stress, σ<sub>max</sub>","ksi")}
+  ${labRow("gF1","3. Factor of safety against yield at room temperature","")}
+  ${labRow("gF2",`4. Factor of safety against yield at ${p.T}°C`,"")}
+  <p><button class="btn" onclick="checkLab('g')">Check Part A</button> <span class="note">Attempts: ${S.tries.g||0}</span></p>
+  ${S.labDone.g?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: what does an FS below 1 under ordinary loads tell you about a bridge that is "still standing"? Strength isn't the only thing heat takes away; stiffness drops too.</p>`:""}
+  ${S.lab.gmsg?`<div class="msg bad">${S.lab.gmsg}</div>`:""}</div>
+  <div class="card"><h3 style="margin-top:0">Part B: Why does light fill matter?</h3>
+  <p>The temporary roadway sits on a column of fill <b>H = ${p.H} ft</b> tall. Find the vertical stress the fill puts on the ground at its base if it is made of:</p>
+  <ul><li>compacted soil, unit weight γ = 120 lb/ft³</li><li>foamed glass aggregate, unit weight γ ≈ 15 lb/ft³ (a classroom value)</li></ul>
+  ${labRow("fS","1. Stress at base, soil fill","psf")}
+  ${labRow("fG","2. Stress at base, foamed glass fill","psf")}
+  ${labRow("fR","3. Percent reduction in base stress","%")}
+  <p><button class="btn" onclick="checkLab('f')">Check Part B</button> <span class="note">Attempts: ${S.tries.f||0}</span></p>
+  ${S.labDone.f?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: less stress on the ground means less settlement, so you wait less before paving.</p>`:""}
+  ${S.lab.fmsg?`<div class="msg bad">${S.lab.fmsg}</div>`:""}</div>${next("lab")}`;
+}
+function near(v,t){v=parseFloat(v);if(!isFinite(v))return false;return Math.abs(v-t)<=Math.max(0.02*Math.abs(t),1e-9);}
+function checkLab(part){
+  const p=P();S.tries[part]=(S.tries[part]||0)+1;
+  const keys=part==="g"?[["gM",p.M],["gS",p.sig],["gF1",p.FS20],["gF2",p.FST]]:[["fS",p.soil],["fG",p.fg],["fR",p.red]];
+  let all=true;keys.forEach(([k,t])=>{const ok=near(S.lab[k],t);S.lab[k+"_ok"]=ok;if(!ok)all=false;});
+  if(all){S.labDone[part]=true;S.lab[part+"msg"]="";}
+  else S.lab[part+"msg"]=part==="g"?"Not yet. Check units: M in kip·ft, but σ = M/S needs kip·in. Is the temperature between two table entries?":"Not yet. Stress from a column of material is σ = γH, in lb/ft² (psf).";
+  save();render();
+}
+
+function vBoard(){
+  const cards=allCards();
+  return `<div class="card"><h2>Root cause board</h2>
+  <p>Build three root causes of the success. For each one, link <b>at least two evidence cards</b> (the events and conditions), name the <b>character strength</b> behind it, and explain the chain from evidence to root cause. At least one root cause must use your own lab card (C1 or C2).</p>
+  <p class="note">Ask yourself: what conditions made the 12-day response possible? What do several pieces of evidence have in common underneath?</p></div>
+  ${S.board.map((r,i)=>`<div class="rc"><h3>Root cause ${i+1}</h3>
+    <div class="row"><div><label for="r${i}">Root cause</label><select id="r${i}" data-i="${i}" data-f="root"><option value="">Choose…</option>${ROOTS.map(o=>`<option value="${o[0]}" ${r.root===o[0]?"selected":""}>${o[1]}</option>`).join("")}</select>
+    <input type="text" data-i="${i}" data-f="own" placeholder="Your own root cause" value="${esc(r.own)}" class="${r.root==="R6"?"":"hidden"}" style="margin-top:6px"></div>
+    <div><label for="s${i}">Character strength</label><select id="s${i}" data-i="${i}" data-f="str"><option value="">Choose…</option>${STRENGTHS.map(o=>`<option ${r.str===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
+    <label>Evidence (click to link)</label><div>${Object.entries(cards).map(([k,t])=>evHTML(k,t,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
+    <label for="w${i}">How does this evidence lead to this root cause?</label><textarea id="w${i}" data-i="${i}" data-f="why">${esc(r.why)}</textarea>
+    <div class="note" id="wc${i}">${words(r.why)} words (15 minimum)</div></div>`).join("")}
+  <div class="card" id="berr">${errHTML()}</div>${next("board")}`;
+}
+function errHTML(){const e=boardErrors();return e.length?`<b>Still needed:</b><ul>${e.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<span class="msg ok">Board complete.</span>`;}
+function wireBoard(){
+  document.querySelectorAll(".rc select,.rc input,.rc textarea").forEach(el=>{
+    const ev=el.tagName==="SELECT"?"change":"input";
+    el.addEventListener(ev,()=>{const i=+el.dataset.i,f=el.dataset.f;S.board[i][f]=el.value;save();
+      if(f==="root"){render();return;}
+      if(f==="why")document.getElementById("wc"+i).textContent=words(el.value)+" words (15 minimum)";
+      refreshBoardStatus();});
+  });
+  document.querySelectorAll(".rc .chip").forEach((el,idx)=>{
+    el.addEventListener("click",()=>{const rc=el.closest(".rc");const i=[...document.querySelectorAll(".rc")].indexOf(rc);const id=el.dataset.id;const a=S.board[i].cards;
+      const j=a.indexOf(id);if(j>=0)a.splice(j,1);else a.push(id);el.classList.toggle("sel");save();refreshBoardStatus();});
+  });
+}
+function refreshBoardStatus(){document.getElementById("berr").innerHTML=errHTML();
+  const b=[...document.querySelectorAll("main > p .btn")].pop();if(b)b.disabled=!done("board");
+  document.querySelectorAll("#nav button").forEach((n,i)=>{n.classList.toggle("done",done(STAGES[i][0]));n.disabled=!unlocked(STAGES[i][0]);});}
+
+function ending(rid){
+  const p=P();
+  return {
+   R1:"Without the emergency declaration, ordinary permitting and procurement take their usual months. The foamed glass order sits in review. I-95 stays closed into the fall, and detour traffic floods neighborhood streets that were never designed to carry it.",
+   R2:`Under pressure to reopen fast, the southbound span is patched and reopened instead of demolished. Your own lab says what that girder was really working with: a factor of safety of ${fmt(p.FST)} at ${p.T}°C. Or the gap is filled with ordinary soil, and everyone waits while ${fmt(p.soil)} psf presses the ground below into settling before anyone can pave.`,
+   R3:"Each group waits on the next one's paperwork. Shifts don't overlap, the supplier hears about the order late, and the unions and contractors argue over scope. Twelve days becomes twelve weeks.",
+   R4:"No livestream, no briefings, no hotline. Rumors spread that the temporary road is unsafe. Residents feel ignored, officials spend their time on damage control, and public pressure pushes decisions toward politics instead of engineering.",
+   R5:"Without a local supplier, the fill has to be shipped from far away. A few days of rain stack up with nothing to dry the site, and the schedule slips day by day."
+  }[rid]||"You named your own root cause. Imagine the story without it and write the ending yourself below.";
+}
+function vCounter(){
+  const opts=S.board.map((r,i)=>[String(i),rootLabel(r)]);
+  const pick=S.cf.pick!==""?S.board[+S.cf.pick]:null;
+  return `<div class="card"><h2>What if?</h2><p>A root cause is only a root cause if the story changes without it. Remove one of <b>your</b> root causes and see what happens.</p>
+  ${opts.map(([i,l])=>`<p><button class="btn ${S.cf.pick===i?"":"alt"}" onclick="S.cf.pick='${i}';save();render()">Remove: ${esc(l)}</button></p>`).join("")}
+  ${pick?`<div class="ending"><b>Alternate ending</b><br>${esc(ending(pick.root))}</div>
+  <label for="cfw">In 40+ words: why does removing this cause change the outcome? Use at least one mechanics idea (stress, factor of safety, strength loss, load, settlement…). Is there a failure case (Hyatt Regency, I-35W, the molasses tank) where this same root cause was missing?</label>
+  <textarea id="cfw" oninput="S.cf.why=this.value;save();document.getElementById('cfc').textContent=words(this.value)+' words';document.getElementById('cfn').disabled=!done('counter')">${esc(S.cf.why)}</textarea><div class="note" id="cfc">${words(S.cf.why)} words</div>`:""}
+  </div><p><button id="cfn" class="btn" ${done("counter")?"":"disabled"} onclick="go('reflect')">Continue to Reflection →</button></p>`;
+}
+function vReflect(){
+  return `<div class="card"><h2>Reflection</h2>
+  <label for="rf">In 40+ words: Which character strength from your board do you most want to develop as an engineer? Where did you see it, or notice it missing, in your own work during this class?</label>
+  <textarea id="rf" style="min-height:140px" oninput="S.refl=this.value;save();document.getElementById('rfc').textContent=words(this.value)+' words';document.getElementById('rfn').disabled=!done('reflect')">${esc(S.refl)}</textarea>
+  <div class="note" id="rfc">${words(S.refl)} words</div></div>
+  <p><button id="rfn" class="btn" ${done("reflect")?"":"disabled"} onclick="go('report')">See my report →</button></p>`;
+}
+function reportText(){
+  const p=P(),cards=allCards();
+  let t=`THE 12-DAY INVESTIGATION: EGR 343\nName: ${S.name}\nCompletion code: ${code(S.name)}\n\n`;
+  t+=`LAB BENCH (your parameters)\nPart A: L=${p.L} ft, w=${p.w} kip/ft, S=${p.S} in^3, T=${p.T} C\n  Mmax=${S.lab.gM} kip-ft, sigma=${S.lab.gS} ksi, FS(20C)=${S.lab.gF1}, FS(${p.T}C)=${S.lab.gF2}  [attempts: ${S.tries.g||0}]\n`;
+  t+=`Part B: H=${p.H} ft\n  soil=${S.lab.fS} psf, foamed glass=${S.lab.fG} psf, reduction=${S.lab.fR}%  [attempts: ${S.tries.f||0}]\n\n`;
+  t+=`ROOT CAUSE BOARD\n`;
+  S.board.forEach((r,i)=>{t+=`${i+1}. ${rootLabel(r)}\n   Strength: ${r.str}\n   Evidence: ${r.cards.map(c=>c+": "+cards[c]).join("\n             ")}\n   Chain: ${r.why.trim()}\n\n`;});
+  t+=`WHAT IF? Removed: ${S.cf.pick!==""?rootLabel(S.board[+S.cf.pick]):""}\n${S.cf.why.trim()}\n\nREFLECTION\n${S.refl.trim()}\n`;
+  return t;
+}
+function vReport(){
+  return `<div class="card"><h2>Your report</h2>
+  <p>Completion code: <span class="code">${code(S.name)}</span></p>
+  <div class="noprint"><p><b>To submit:</b> copy the report and paste it into the Canvas assignment, or use Print → Save as PDF and upload the file.</p>
+  <p><button class="btn" onclick="copyRep(this)">Copy report</button> <button class="btn alt" onclick="try{window.print()}catch(e){}">Print / Save as PDF</button></p>
+  <p class="note">If printing doesn't open, use Copy report instead.</p></div>
+  <div id="report"><pre>${esc(reportText())}</pre></div></div>`;
+}
+function copyRep(b){navigator.clipboard.writeText(reportText()).then(()=>{b.textContent="Copied ✓";},()=>{b.textContent="Copy failed: select the text below";});}
+
+/* ================= INSTRUCTOR CHECKER (#checker) ================= */
+function vChecker(){
+  return `<div class="card"><h2>Instructor checker</h2><p>Enter a student's name exactly as it appears in Canvas to see their expected completion code and lab answers.</p>
+  <input id="cn" type="text" oninput="chk(this.value)"><div id="co" style="margin-top:12px"></div></div>`;
+}
+function chk(n){
+  const o=document.getElementById("co");if(!n.trim()){o.innerHTML="";return;}const p=params(n);
+  o.innerHTML=`<p>Expected code: <span class="code">${code(n)}</span></p>
+  <p>Part A (L=${p.L} ft, w=${p.w} kip/ft, S=${p.S} in³, T=${p.T}°C): M=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
+  <p>Part B (H=${p.H} ft): soil=${fmt(p.soil,4)} psf, foamed glass=${fmt(p.fg,4)} psf, reduction=87.5%</p>`;
+}
+
+function route(){
+  if(location.hash==="#checker"){document.getElementById("nav").innerHTML="";document.getElementById("main").innerHTML=vChecker();}
+  else{if(!unlocked(S.stage))S.stage="start";render();}
+}
+window.addEventListener("hashchange",route);
+route();
+</script>
+</body>
+</html>
