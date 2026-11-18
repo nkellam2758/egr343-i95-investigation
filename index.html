@@ -512,9 +512,10 @@ function vReflect(){
   const tries=(S.tries.a||0)+(S.tries.b||0),slips=S.unitSlips||0;
   return `<div class="card"><h2>Reflection</h2>
   <label for="r1">1. Compare your first list with your final analysis. What did the video lead you to miss or over-weight? What did the human and organizational evidence change about how you see this collapse? (40+ words)</label>
+  <p class="note">Tip: click the tabs at the top (like <b>1. Watch & guess</b> or <b>5. Root cause analysis</b>) to look back at your earlier work. Your answers here are saved.</p>
   <textarea id="r1" data-r="r1" style="min-height:120px">${esc(S.r1)}</textarea><div class="note" id="r1c">${words(S.r1)} words</div>
-  <label for="r2">2. Virtues in your engineering work. Choose one virtue from your moments of choice. Describe a situation in your current work (a job, internship, team project, or this class) or your future work as an engineer where practicing it will be hard. What pressures will push against it (time, cost, a boss, routine, fatigue), and what will you actually do? (40+ words)</label>
-  <p class="note">An example close to home: the open manhole cover was a routine check that got skipped. At the lab bench you used ${tries} attempt${tries===1?"":"s"}${slips?`, including ${slips} unit slip${slips===1?"":"s"}`:""}. What is your own "pre-trip check," and when do you skip it?</p>
+  <label for="r2">2. Virtues in your current work. Think of a situation in your current work (a job, an internship, or a team project) where doing the right thing was hard. Which virtue did it call for? What pressures pushed against it (time, a boss, customers, routine, fatigue)? What did you do, or what would you do next time? (40+ words)</label>
+  <p class="note"><b>Some virtues:</b> attentiveness, diligence, honesty, responsibility, courage, humility, care for others, prudence (practical wisdom), integrity.<br><b>Example:</b> You work in a restaurant during a dinner rush. The protocol says to change gloves after handling raw chicken, but it slows you down, everyone is waiting, and nothing bad happened the last time you skipped it. That's the same pattern as the open manhole cover: a routine check that gets skipped under pressure. Here, the virtues at stake are diligence and care for others.</p>
   <textarea id="r2" data-r="r2" style="min-height:120px">${esc(S.r2)}</textarea><div class="note" id="r2c">${words(S.r2)} words</div>
   <label for="r3">3. Materials. In the tensile lab you measured the properties of steel, aluminum and acrylic at room temperature. Your calculations here showed the same steel losing most of its strength in a fire. What does this case teach you about treating material properties as fixed numbers? Name one design you might work on where temperature or another condition could change a material's properties, and explain how you would account for it. (40+ words)</label>
   <textarea id="r3" data-r="r3" style="min-height:120px">${esc(S.r3)}</textarea><div class="note" id="r3c">${words(S.r3)} words</div></div>
@@ -534,7 +535,7 @@ function reportText(){
   S.mc.forEach((r,i)=>{const c=CARDS[r.m]||{who:"",t:""};t+=`${i+1}. ${r.m} (${c.who}): ${c.t}\n   Judgment: ${r.judge}; Virtue: ${r.virtue}\n   What made it hard: ${r.hard.trim()}\n   Practical wisdom / system change: ${r.wise.trim()}\n\n`;});
   t+=`TOP THREE ROOT CAUSES\n`;
   S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}]\n   Type: ${r.type}\n   Evidence: ${r.cards.map(c=>c+": "+(cards[c]?cards[c].t:"")).join("\n             ")}\n   Prevention: ${r.fix.trim()}\n\n`;});
-  t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my engineering work: ${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
+  t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my current work:${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
   return t;
 }
 function vReport(){
