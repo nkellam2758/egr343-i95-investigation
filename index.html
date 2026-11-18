@@ -181,7 +181,7 @@ const KEY="egr343-i95-collapse-v2", OLDKEY="egr343-i95-collapse-v1";
 const blankTop=()=>({h:"",cards:[],type:"",fix:""});
 const blankMC=()=>({m:"",judge:"",virtue:"",hard:"",wise:""});
 let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},unitSlips:0,
-  why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:""};
+  why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:"",r3:""};
 try{
   const s=localStorage.getItem(KEY);
   if(s)S=Object.assign(S,JSON.parse(s));
@@ -212,7 +212,7 @@ function done(st){
     case"update":return vidHyps().filter(okHyp).every(h=>!!h.s)&&intHyps().filter(okHyp).length>=2&&intHyps().every(h=>okHyp(h)||!h.t.trim());
     case"lab":return S.labDone.a&&S.labDone.b;
     case"rca":return rcaErrors().length===0;
-    case"reflect":return words(S.r1)>=40&&words(S.r2)>=40;
+    case"reflect":return words(S.r1)>=40&&words(S.r2)>=40&&words(S.r3)>=40;
     case"report":return false;
   }
 }
@@ -267,7 +267,7 @@ function render(){
   if(S.stage==="lab")drawMohr();
 }
 function renderNav(){document.getElementById("nav").innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}</button>`).join("");}
-function refresh(){renderNav();const b=document.getElementById("nextBtn");if(b)b.disabled=!done(S.stage);const e=document.getElementById("err");if(e&&S.stage==="rca")e.innerHTML=errHTML();}
+function refresh(){renderNav();const b=document.getElementById("nextBtn");if(b)b.disabled=!done(S.stage);const e=document.getElementById("err");if(e&&S.stage==="rca")e.innerHTML=errHTML();const q=document.getElementById("reqs");if(q)q.innerHTML=reqHTML();}
 function next(){const i=STAGES.findIndex(s=>s[0]===S.stage);const n=STAGES[i+1];return n?`<p><button id="nextBtn" class="btn" ${done(S.stage)?"":"disabled"} onclick="go('${n[0]}')">Continue to ${n[1].replace(/^\d+\.\s/,"")} →</button></p>`:"";}
 function evHTML(id,c,extra=""){return `<span class="ev ${c.k} ${extra}" data-id="${id}">${c.who?`<span class="who">⚖ ${esc(c.who)}</span>`:""}<span class="id">${id}</span>${esc(c.t)}</span>`;}
 const legend=`<div class="legend note"><span><i style="background:#fff;border:1px solid #ccc"></i>Technical</span><span><i style="background:#7b5ea7"></i>Human & organizational</span><span><i style="background:var(--teal)"></i>⚖ Moment of choice</span><span><i style="background:var(--gold)"></i>Your lab result</span></div>`;
@@ -284,6 +284,7 @@ function vVideo(){
   <p class="note">Your name sets your lab numbers, so every student's numbers are different. Progress saves in this browser.</p></div>
   <div class="card"><h3 style="margin-top:0">Your first list of root causes</h3>
   <p>Write at least <b>4</b> possible causes, and tag each one with a category. Think beyond "the truck crashed": people, equipment, rules, the structure, the site. ${S.locked?"<b>This list is now locked</b> so you can compare it with what you learn.":"Once you move on, this list locks."}</p>
+  <div class="say"><b>Why categories?</b> Investigators sort causes into categories, called a fishbone diagram, so they don't stop at the first obvious cause. Real investigations, like the NTSB's, look at the people involved, the equipment, the organizations and rules, the structure, and the site.<br><b>Looking ahead:</b> at the end, you'll choose your three most important root causes. For this assignment, they must include <b>(1)</b> at least one <b>Structure & materials</b> cause backed by your own lab calculation, and <b>(2)</b> at least one <b>People</b> or <b>Rules & organizations</b> cause. Keep both kinds in mind as you investigate.</div>
   ${vidHyps().map(h=>`<div class="hyp">${S.locked?`<div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><span></span>`:`<input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" placeholder="e.g., The truck was going too fast for the ramp">${catSel(h)}<button class="btn alt sm" data-del="${h.id}">✕</button>`}</div>`).join("")}
   ${S.locked?"":`<p><button class="btn alt sm" onclick="addHyp('video');save();render()">+ Add another</button></p><p class="note">Each cause needs at least 3 words and a category.</p>`}
   </div>${next()}`;
@@ -488,13 +489,22 @@ function vRCA(){
     <div><label>Which virtue was shown or missing?</label><select data-mc="${i}" data-f="virtue"><option value="">Choose…</option>${VIRTUES.map(o=>`<option ${r.virtue===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
     <label>What made the right action hard here? (pressures, routines, incentives, uncertainty)</label><textarea data-mc="${i}" data-f="hard">${esc(r.hard)}</textarea>
     <label>What would practical wisdom have looked like, or what system change would make the right choice easier?</label><textarea data-mc="${i}" data-f="wise">${esc(r.wise)}</textarea></div>`).join("")}
-  <div class="card"><h3 style="margin-top:0">Step 4: Your three most important root causes</h3><p>Choose from your list, link the evidence, classify each one, and propose a prevention. Include at least one Structure & materials cause backed by your lab, and at least one People or Rules & organizations cause.</p>${legend}</div>
+  <div class="card"><h3 style="margin-top:0">Step 4: Your three most important root causes</h3><p>Choose from your list, link the evidence, classify each one, and propose a prevention.</p>
+  <p><b>Assignment requirements</b> (these come from this assignment, not from root cause analysis in general; they make sure your analysis spans both the physics and the people):</p>
+  <div id="reqs">${reqHTML()}</div>${legend}</div>
   ${S.top.map((r,i)=>`<div class="rc"><h3>Root cause ${i+1}</h3>
     <div class="row"><div><label>From your list</label><select data-t="${i}" data-f="h"><option value="">Choose…</option>${live.map(h=>`<option value="${h.id}" ${r.h===h.id?"selected":""}>${esc(h.t)} (${esc(h.c)})</option>`).join("")}</select></div>
     <div><label>Type</label><select data-t="${i}" data-f="type"><option value="">Choose…</option>${TYPES.map(o=>`<option ${r.type===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
     <label>Evidence (click to link)</label><div>${Object.entries(cards).map(([k,c])=>evHTML(k,c,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
     <label>Prevention: what specific change would break this link? Who would make it?</label><textarea data-t="${i}" data-f="fix">${esc(r.fix)}</textarea></div>`).join("")}
   <div class="card" id="err">${errHTML()}</div>${next()}`;
+}
+function reqHTML(){
+  const cat=r=>{const h=hypById(r.h);return h?h.c:"";};
+  const q=[[S.top.some(r=>cat(r)==="Structure & materials"),"At least one root cause in <b>Structure & materials</b>"],
+    [S.top.some(r=>r.cards.some(c=>c[0]==="C")),"At least one root cause backed by <b>your lab result</b> (card C1 or C2)"],
+    [S.top.some(r=>cat(r)==="People"||cat(r)==="Rules & organizations"),"At least one root cause in <b>People</b> or <b>Rules & organizations</b>"]];
+  return `<ul style="list-style:none;padding-left:4px;margin:4px 0">${q.map(([ok,t])=>`<li>${ok?'<span class="ok">✓</span>':'<span class="note">○</span>'} ${t}</li>`).join("")}</ul>`;
 }
 function errHTML(){const e=rcaErrors();return e.length?`<b>Still needed:</b><ul>${e.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<span class="msg ok">Analysis complete.</span>`;}
 
@@ -503,8 +513,11 @@ function vReflect(){
   return `<div class="card"><h2>Reflection</h2>
   <label for="r1">1. Compare your first list with your final analysis. What did the video lead you to miss or over-weight? What did the human and organizational evidence change about how you see this collapse? (40+ words)</label>
   <textarea id="r1" data-r="r1" style="min-height:120px">${esc(S.r1)}</textarea><div class="note" id="r1c">${words(S.r1)} words</div>
-  <label for="r2">2. Your "pre-trip check." The open manhole cover was a check that became routine, then got skipped. At the lab bench you used ${tries} attempt${tries===1?"":"s"}${slips?`, including ${slips} unit slip${slips===1?"":"s"}`:""}. What is <i>your</i> pre-trip check in engineering work (units, free-body diagrams, sign conventions, a sanity check on the answer)? When do you skip it, what makes it hard to keep doing, and which virtue would help you keep it? (40+ words)</label>
-  <textarea id="r2" data-r="r2" style="min-height:120px">${esc(S.r2)}</textarea><div class="note" id="r2c">${words(S.r2)} words</div></div>
+  <label for="r2">2. Virtues in your engineering work. Choose one virtue from your moments of choice. Describe a situation in your current work (a job, internship, team project, or this class) or your future work as an engineer where practicing it will be hard. What pressures will push against it (time, cost, a boss, routine, fatigue), and what will you actually do? (40+ words)</label>
+  <p class="note">An example close to home: the open manhole cover was a routine check that got skipped. At the lab bench you used ${tries} attempt${tries===1?"":"s"}${slips?`, including ${slips} unit slip${slips===1?"":"s"}`:""}. What is your own "pre-trip check," and when do you skip it?</p>
+  <textarea id="r2" data-r="r2" style="min-height:120px">${esc(S.r2)}</textarea><div class="note" id="r2c">${words(S.r2)} words</div>
+  <label for="r3">3. Materials. In the tensile lab you measured the properties of steel, aluminum and acrylic at room temperature. Your calculations here showed the same steel losing most of its strength in a fire. What does this case teach you about treating material properties as fixed numbers? Name one design you might work on where temperature or another condition could change a material's properties, and explain how you would account for it. (40+ words)</label>
+  <textarea id="r3" data-r="r3" style="min-height:120px">${esc(S.r3)}</textarea><div class="note" id="r3c">${words(S.r3)} words</div></div>
   <p><button id="nextBtn" class="btn" ${done("reflect")?"":"disabled"} onclick="go('report')">See my report →</button></p>`;
 }
 
@@ -521,7 +534,7 @@ function reportText(){
   S.mc.forEach((r,i)=>{const c=CARDS[r.m]||{who:"",t:""};t+=`${i+1}. ${r.m} (${c.who}): ${c.t}\n   Judgment: ${r.judge}; Virtue: ${r.virtue}\n   What made it hard: ${r.hard.trim()}\n   Practical wisdom / system change: ${r.wise.trim()}\n\n`;});
   t+=`TOP THREE ROOT CAUSES\n`;
   S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}]\n   Type: ${r.type}\n   Evidence: ${r.cards.map(c=>c+": "+(cards[c]?cards[c].t:"")).join("\n             ")}\n   Prevention: ${r.fix.trim()}\n\n`;});
-  t+=`REFLECTION\n1. ${S.r1.trim()}\n\n2. ${S.r2.trim()}\n`;
+  t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my engineering work: ${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
   return t;
 }
 function vReport(){
