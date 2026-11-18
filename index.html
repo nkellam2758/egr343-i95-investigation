@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>The I-95 Collapse Investigation — EGR 343</title>
+<title>The I-95 Collapse Investigation | EGR 343</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -78,6 +78,14 @@
   @media(max-width:700px){.figrow{grid-template-columns:1fr}}
   .code{font-family:ui-monospace,Menlo,monospace;font-size:1.4rem;letter-spacing:2px;background:var(--maroon);color:var(--gold);padding:6px 14px;border-radius:8px;display:inline-block}
   #report pre{white-space:pre-wrap;font-family:inherit}
+  .chat{border:1px solid #cfd8dc;border-radius:10px;padding:12px;margin-top:12px;background:#f7fafc}
+  .chat h4{margin:0 0 6px;color:var(--blue)}
+  .bubble{padding:8px 11px;border-radius:10px;margin:6px 0;max-width:88%}
+  .bubble.user{background:#e3f2fd;margin-left:auto}
+  .bubble.assistant{background:#fff;border:1px solid #cfd8dc}
+  .bubble .lbl{display:block;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase}
+  .chatin{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:6px}
+  .thinking{color:var(--muted);font-style:italic}
   @media print{header,nav,.noprint{display:none!important}body{background:#fff}.card{border:0}}
 </style>
 </head>
@@ -90,6 +98,13 @@
 <main id="main"></main>
 
 <script>
+/* ================= AI SETTINGS =================
+   Paste your Cloudflare Worker URL between the quotes, e.g. "https://i95-ai.yourname.workers.dev".
+   Leave it empty to run the game without AI (the AI steps are then skipped). */
+const AI_URL="";
+/* Paste the link to your Canvas "Game help" discussion here (optional). */
+const HELP_URL="";
+
 /* ================= DATA ================= */
 const STAGES=[["video","1. Watch & guess"],["interviews","2. Interviews"],["update","3. Update your list"],["lab","4. Lab bench"],["rca","5. Root cause analysis"],["reflect","6. Reflection"],["report","7. Report"]];
 const VIDEO_ID="iKNw1mnA5M0";
@@ -181,7 +196,8 @@ const KEY="egr343-i95-collapse-v2", OLDKEY="egr343-i95-collapse-v1";
 const blankTop=()=>({h:"",cards:[],type:"",fix:""});
 const blankMC=()=>({m:"",judge:"",virtue:"",hard:"",wise:""});
 let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},unitSlips:0,
-  why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:"",r3:""};
+  why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:"",r3:"",
+  chat:{ntsb:[],safety:[],fire:[],eng:[]},coach:{whys:[],moments:[]},aiFail:false,test:{}};
 try{
   const s=localStorage.getItem(KEY);
   if(s)S=Object.assign(S,JSON.parse(s));
@@ -201,16 +217,105 @@ function fmt(x,d=3){return Number(Number(x).toPrecision(d)).toLocaleString("en-U
 const vidHyps=()=>S.hyp.filter(h=>h.src==="video");
 const intHyps=()=>S.hyp.filter(h=>h.src==="interview");
 const okHyp=h=>words(h.t)>=3&&!!h.c;
+const validCode=()=>/^[A-Za-z0-9_-]{4,20}$/.test((S.name||"").trim());
+const codeMsg=()=>!S.name?"":validCode()?'<span class="ok">✓ Good code. Write it down.</span>':'<span class="bad">Use 4–20 letters, numbers, - or _, with no spaces.</span>';
 const hypById=id=>S.hyp.find(h=>h.id===id);
+
+/* ================= AI ================= */
+let busy=null; // which chat is waiting for a reply
+const aiOn=()=>!!AI_URL&&!S.aiFail;
+const testDone=pid=>!!(S.test&&S.test[pid]&&S.test[pid].done);
+const coached=sec=>S.coach[sec].some(m=>m.role==="assistant");
+async function callAI(payload){
+  const r=await fetch(AI_URL,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(payload)});
+  if(!r.ok)throw new Error("AI "+r.status);
+  const d=await r.json();if(!d.reply)throw new Error("empty");return d.reply;
+}
+function aiError(){
+  S.aiFail=true;save();
+  return "The AI isn't responding right now, so this step is optional for you. Keep going with the rest of the investigation.";
+}
+function bubbles(list){return list.map(m=>`<div class="bubble ${m.role}"><span class="lbl">${m.role==="user"?"You":esc(m.who||"")}</span>${esc(m.show??m.content)}</div>`).join("");}
+async function askOwn(pid){
+  const inp=document.getElementById("own_"+pid);const q=(inp.value||"").trim();if(!q||busy)return;
+  const who=PEOPLE.find(x=>x.id===pid).name;
+  S.chat[pid].push({role:"user",content:q.slice(0,600)});busy=pid;save();render();
+  try{const reply=await callAI({mode:"interview",character:pid,messages:S.chat[pid].map(({role,content})=>({role,content})).slice(-14)});
+    S.chat[pid].push({role:"assistant",content:reply,who});}
+  catch(e){S.chat[pid].pop();alertBox(aiError());}
+  busy=null;save();render();
+}
+function coachWork(sec){
+  if(sec==="whys")return "Problem: The northbound I-95 overpass collapsed.\n"+S.why.map((w,i)=>`Why ${i+1}: ${w.trim()||"(blank)"}`).join("\n");
+  return S.mc.map((r,i)=>{const c=CARDS[r.m];return `Moment ${i+1}: ${c?c.who+": "+c.t:"(not chosen)"}\n  Judgment: ${r.judge||"(blank)"}; Virtue: ${r.virtue||"(blank)"}\n  What made it hard: ${r.hard.trim()||"(blank)"}\n  Practical wisdom / system change: ${r.wise.trim()||"(blank)"}`;}).join("\n\n");
+}
+async function askCoach(sec){
+  if(busy)return;const inp=document.getElementById("coachin_"+sec);const note=inp?(inp.value||"").trim():"";
+  const work=coachWork(sec);
+  const content=(note?note+"\n\n":"")+"My current work:\n"+work;
+  S.coach[sec].push({role:"user",content:content.slice(0,2400),show:note||(S.coach[sec].length?"(Shared my revised work.)":"(Shared my work.)")});
+  busy=sec;save();render();
+  try{const reply=await callAI({mode:"coach",section:sec,messages:S.coach[sec].map(({role,content})=>({role,content})).slice(-12)});
+    S.coach[sec].push({role:"assistant",content:reply,who:"Coach"});}
+  catch(e){S.coach[sec].pop();alertBox(aiError());}
+  busy=null;save();render();
+}
+function alertBox(msg){S._alert=msg;}
+function testHTML(pid){
+  const p=PEOPLE.find(x=>x.id===pid);const t=(S.test||{})[pid];
+  if(t&&t.done){const h=hypById(t.h);
+    return `<div class="chat"><h4>Your test question</h4><p class="note" style="margin:0">Testing your guess: <i>${esc(h?h.t:"")}</i></p>
+    ${bubbles(S.chat[pid].slice(0,2).length?S.chat[pid].slice(0,2):[{role:"user",content:t.q}])}${!t.a?'<p class="note">The AI wasn\'t available, so listen for the answer in the questions below.</p>':""}</div>`;}
+  const opts=vidHyps().filter(okHyp).map(h=>`<option value="${h.id}" ${t&&t.h===h.id?"selected":""}>${esc(h.t)}</option>`).join("");
+  return `<div class="chat"><h4>First: test one of your guesses</h4>
+  <p class="note" style="margin:0">Real investigators come to interviews with hypotheses. Pick one guess from your first list that ${esc(p.name)} might be able to confirm or challenge, and ask a question that would test it. ${aiOn()?`${esc(p.name.split(" ")[0])} answers only from what's in the record.`:""} The standard questions open after you ask.</p>
+  <label>Guess you're testing</label><select id="th_${pid}"><option value="">Choose…</option>${opts}</select>
+  <label>Your question for ${esc(p.name)}</label>
+  ${busy===pid?'<div class="thinking">…thinking</div>':""}
+  <div class="chatin"><input type="text" id="tq_${pid}" placeholder="e.g., Could the driver have seen the warning sign?" onkeydown="if(event.key==='Enter')askTest('${pid}')"><button class="btn sm" ${busy?"disabled":""} onclick="askTest('${pid}')">Ask</button></div>
+  <div id="tmsg_${pid}" class="note"></div></div>`;
+}
+async function askTest(pid){
+  if(busy)return;const h=document.getElementById("th_"+pid).value;const q=(document.getElementById("tq_"+pid).value||"").trim();
+  const m=document.getElementById("tmsg_"+pid);
+  if(!h){m.innerHTML='<span class="bad">Choose the guess you are testing.</span>';return;}
+  if(words(q)<4){m.innerHTML='<span class="bad">Write a full question (at least 4 words).</span>';return;}
+  S.test=S.test||{};const hyp=hypById(h);const who=PEOPLE.find(x=>x.id===pid).name;
+  if(!aiOn()){S.test[pid]={h,q,a:"",done:true};S.chat[pid]=[{role:"user",content:q}];save();render();return;}
+  const content=`I'm testing this hypothesis from my investigation: "${hyp.t}". My question: ${q}`.slice(0,800);
+  S.chat[pid]=[{role:"user",content,show:q}];busy=pid;save();render();
+  try{const reply=await callAI({mode:"interview",character:pid,messages:[{role:"user",content}]});
+    S.chat[pid].push({role:"assistant",content:reply,who});S.test[pid]={h,q,a:reply,done:true};}
+  catch(e){S.test[pid]={h,q,a:"",done:true};alertBox(aiError());}
+  busy=null;save();render();
+}
+function chatHTML(pid){
+  if(!aiOn()||!testDone(pid))return "";
+  const p=PEOPLE.find(x=>x.id===pid);
+  return `<div class="chat"><h4>Follow-up questions for ${esc(p.name)} (optional)</h4>
+  <p class="note" style="margin:0">Curious about something else? Ask. ${esc(p.name.split(" ")[0])} answers only from what's in the record and will say so when something isn't known.</p>
+  ${bubbles(S.chat[pid].slice(2))}${busy===pid?'<div class="thinking">…thinking</div>':""}
+  <div class="chatin"><input type="text" id="own_${pid}" placeholder="e.g., Why would a driver not notice an open manhole cover?" onkeydown="if(event.key==='Enter')askOwn('${pid}')"><button class="btn sm" ${busy?"disabled":""} onclick="askOwn('${pid}')">Ask</button></div></div>`;
+}
+function coachHTML(sec){
+  if(!aiOn())return "";
+  const label=sec==="whys"?"5 Whys":"moments of choice";
+  const has=S.coach[sec].length>0;
+  return `<div class="chat"><h4>Coach: ${label}</h4>
+  <p class="note" style="margin:0">The coach reads your current ${label} and asks you one question to push your thinking. It won't give you answers. Revise your work, then share it again or reply. Ask the coach at least once.</p>
+  ${bubbles(S.coach[sec])}${busy===sec?'<div class="thinking">…thinking</div>':""}
+  ${has?`<div class="chatin"><input type="text" id="coachin_${sec}" placeholder="Reply to the coach (optional). Your current work is shared automatically." onkeydown="if(event.key==='Enter')askCoach('${sec}')"><button class="btn sm" ${busy?"disabled":""} onclick="askCoach('${sec}')">Send</button></div>`
+  :`<p><button class="btn sm" ${busy?"disabled":""} onclick="askCoach('${sec}')">Ask the coach about my ${label}</button></p>`}</div>`;
+}
 
 /* ================= COMPLETION ================= */
 const totalQs=PEOPLE.reduce((a,p)=>a+p.qs.length,0);
 function done(st){
   switch(st){
-    case"video":return !!S.name.trim()&&vidHyps().filter(okHyp).length>=4&&vidHyps().every(h=>okHyp(h)||!h.t.trim());
-    case"interviews":return Object.keys(S.asked).length>=totalQs;
+    case"video":return validCode()&&vidHyps().filter(okHyp).length>=4&&vidHyps().every(h=>okHyp(h)||!h.t.trim());
+    case"interviews":return Object.keys(S.asked).length>=totalQs&&PEOPLE.every(p=>testDone(p.id));
     case"update":return vidHyps().filter(okHyp).every(h=>!!h.s)&&intHyps().filter(okHyp).length>=2&&intHyps().every(h=>okHyp(h)||!h.t.trim());
-    case"lab":return S.labDone.a&&S.labDone.b;
+    case"lab":return S.labDone.a&&S.labDone.b&&hasUp("a")&&hasUp("b");
     case"rca":return rcaErrors().length===0;
     case"reflect":return words(S.r1)>=40&&words(S.r2)>=40&&words(S.r3)>=40;
     case"report":return false;
@@ -246,6 +351,8 @@ function rcaErrors(){
     if(words(r.fix)<12)e.push(`Root cause ${n}: propose a prevention in at least 12 words (${words(r.fix)} so far).`);});
   const hs=S.top.map(r=>r.h).filter(Boolean);
   if(new Set(hs).size<hs.length)e.push("Your three root causes must be different.");
+  if(aiOn()&&!coached("whys"))e.push("Ask the coach about your 5 Whys at least once.");
+  if(aiOn()&&!coached("moments"))e.push("Ask the coach about your moments of choice at least once.");
   const cat=r=>{const h=hypById(r.h);return h?h.c:"";};
   if(!S.top.some(r=>r.cards.some(c=>c[0]==="C")))e.push("At least one root cause must be backed by your own lab result (C1 or C2).");
   if(!S.top.some(r=>cat(r)==="Structure & materials"))e.push("At least one root cause must be in Structure & materials.");
@@ -262,7 +369,9 @@ function go(st){
 }
 function render(){
   renderNav();
-  document.getElementById("main").innerHTML=({video:vVideo,interviews:vInt,update:vUpdate,lab:vLab,rca:vRCA,reflect:vReflect,report:vReport}[S.stage])();
+  const al=S._alert?`<div class="fb">${esc(S._alert)}</div>`:"";S._alert=null;
+  document.getElementById("main").innerHTML=al+({video:vVideo,interviews:vInt,update:vUpdate,lab:vLab,rca:vRCA,reflect:vReflect,report:vReport}[S.stage])()+footer();
+  S._upmsg=null;
   wire();
   if(S.stage==="lab")drawMohr();
 }
@@ -274,14 +383,24 @@ const legend=`<div class="legend note"><span><i style="background:#fff;border:1p
 const catSel=h=>`<select data-h="${h.id}" data-f="c"><option value="">Category…</option>${CATS.map(c=>`<option ${h.c===c?"selected":""}>${c}</option>`).join("")}</select>`;
 
 function vVideo(){
-  return `<div class="card"><h2>Watch and make your first guesses</h2>
+  return `<div class="card" style="border:2px solid var(--gold)"><h2>Before you start</h2>
+  <ul style="margin:0;padding-left:20px">
+   <li><b>Plan on at least 3 hours.</b> You don't have to finish in one sitting. Your work saves as you go.</li>
+   <li><b>Use a laptop or desktop</b> with Chrome, Edge, Safari, or Firefox. A phone is fine for taking photos, but not for playing.</li>
+   <li><b>Have paper, a pencil, and your calculator.</b> You'll solve two problems by hand and upload photos of your work.</li>
+   <li><b>Know how you'll get photos onto your computer.</b> The easiest way is to scan your pages to a PDF with your phone (iPhone Notes app or Google Drive's scan feature), then email, AirDrop, or upload it to yourself. iPhone photos (HEIC) may not upload on Windows. Use PDF or JPG.</li>
+   <li><b>Don't use a private or incognito window.</b> Your work won't be saved.</li>
+  </ul></div>
+  <div class="card"><h2>Watch and make your first guesses</h2>
   <p>Early on Sunday morning, June 11, 2023, a gasoline tanker truck crashed on an exit ramp in Northeast Philadelphia and caught fire. Within the hour, part of Interstate 95, which carries about 160,000 vehicles a day, had collapsed.</p>
   <p>You're joining the investigation. Start the way real investigators do: look at the evidence you have and write down your first hypotheses about <b>why</b> this happened.</p>
   <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${VIDEO_ID}" title="Philadelphia I-95 Bridge Collapse Explained (Practical Engineering)" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
   <p class="note">If the video doesn't load, watch it on YouTube: <a href="https://www.youtube.com/watch?v=${VIDEO_ID}" target="_blank" rel="noopener">Philadelphia I-95 Bridge Collapse Explained</a> (Practical Engineering, about 17 min). It was made five weeks after the collapse, before the official investigation finished, so it can't tell you everything.</p>
-  <label for="nm">Your full name, exactly as it appears in Canvas</label>
-  <input id="nm" type="text" value="${esc(S.name)}" ${S.locked?"disabled":""}>
-  <p class="note">Your name sets your lab numbers, so every student's numbers are different. Progress saves in this browser.</p></div>
+  <label for="nm">Make up an investigator code</label>
+  <input id="nm" type="text" maxlength="20" value="${esc(S.name)}" placeholder="e.g., rivet42" ${S.locked&&validCode()?"disabled":""}>
+  <div id="codeMsg" class="note">${codeMsg()}</div>
+  <p class="note">Use 4–20 letters or numbers, with no spaces and nothing personal (not your name or student ID). Your code sets your own lab numbers and is printed on your report, so <b>write it down</b>. You'll submit through your own Canvas account, so your instructor will still know it's your work. Your code and your work are never linked to your name in this game.</p>
+  <div class="say"><b>Your work saves automatically</b> in this browser on this device, including the photos of your handwritten work that you'll upload later. To finish later, come back on the <b>same device and browser</b>, and don't use a private or incognito window. Need to switch devices? Click <b>Download a backup</b> at the bottom of any page, then <b>Restore from a backup</b> on the other device.</div></div>
   <div class="card"><h3 style="margin-top:0">Your first list of root causes</h3>
   <p>Write at least <b>4</b> possible causes, and tag each one with a category. Think beyond "the truck crashed": people, equipment, rules, the structure, the site. ${S.locked?"<b>This list is now locked</b> so you can compare it with what you learn.":"Once you move on, this list locks."}</p>
   <div class="say"><b>Why categories?</b> Investigators sort causes into categories, called a fishbone diagram, so they don't stop at the first obvious cause. Real investigations, like the NTSB's, look at the people involved, the equipment, the organizations and rules, the structure, and the site.<br><b>Looking ahead:</b> at the end, you'll choose your three most important root causes. For this assignment, they must include <b>(1)</b> at least one <b>Structure & materials</b> cause backed by your own lab calculation, and <b>(2)</b> at least one <b>People</b> or <b>Rules & organizations</b> cause. Keep both kinds in mind as you investigate.</div>
@@ -292,11 +411,13 @@ function vVideo(){
 
 function vInt(){
   const p=PEOPLE.find(x=>x.id===S.person);
-  return `<div class="card"><h2>Interviews</h2><p>Talk to four people who know what the video couldn't. Ask every question; each answer adds an evidence card. Watch for <b>⚖ moments of choice</b>: points where a person or an organization made a decision under real pressure, sometimes well and sometimes not. (${Object.keys(S.asked).length} of ${totalQs} asked)</p>
-  <div class="people">${PEOPLE.map(x=>{const n=x.qs.filter((q,i)=>S.asked[x.id+i]).length;return `<button class="person ${x.id===S.person?"on":""}" onclick="S.person='${x.id}';save();render()"><b>${x.name}</b>${x.role}<br><span class="note">${n}/${x.qs.length} questions</span></button>`}).join("")}</div>
+  return `<div class="card"><h2>Interviews</h2><p>Talk to four people who know what the video couldn't. With each person, <b>first ask a question that tests one of your guesses</b>, then ask all the standard questions; each answer adds an evidence card. Watch for <b>⚖ moments of choice</b>: points where a person or an organization made a decision under real pressure, sometimes well and sometimes not. (${Object.keys(S.asked).length} of ${totalQs} asked)</p>
+  <div class="people">${PEOPLE.map(x=>{const n=x.qs.filter((q,i)=>S.asked[x.id+i]).length;return `<button class="person ${x.id===S.person?"on":""}" onclick="S.person='${x.id}';save();render()"><b>${x.name}</b>${x.role}<br><span class="note">${testDone(x.id)?"✓ test question · ":""}${n}/${x.qs.length} questions</span></button>`}).join("")}</div>
   <p class="note">The characters are fictional. Their facts come from the NTSB's final report (HIR-25-01, 2025) and from news coverage of the investigation. The driver, who died in the crash, is not named here. This investigation asks what systems put a person in that situation, not only what he did.</p></div>
   <div class="card"><h3 style="margin-top:0">${p.name}, ${p.role}</h3>
-  ${p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" onclick="ask('${p.id}',${i})">${S.asked[k]?"✓ ":"❓ "}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
+  ${testHTML(p.id)}
+  ${!testDone(p.id)?"":p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" onclick="ask('${p.id}',${i})">${S.asked[k]?"✓ ":"❓ "}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
+  ${chatHTML(p.id)}
   </div>
   <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
 }
@@ -306,7 +427,7 @@ function vUpdate(){
   return `<div class="card"><h2>Update your list</h2>
   <p>Now compare your first guesses with the evidence. For each one, decide: was it <b>supported</b>, does it need to be <b>revised</b>, was it <b>ruled out</b>, or is there <b>not enough evidence</b>? Then add the causes the video didn't show you. Look especially at the human and organizational evidence.</p></div>
   <div class="card"><h3 style="margin-top:0">From the video</h3>
-  ${vidHyps().map(h=>`<div class="hyp st"><div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><select data-h="${h.id}" data-f="s"><option value="">Verdict…</option>${STATUS.map(s=>`<option ${h.s===s?"selected":""}>${s}</option>`).join("")}</select><span></span></div>`).join("")}</div>
+  ${vidHyps().map(h=>`<div class="hyp st"><div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><select data-h="${h.id}" data-f="s"><option value="">Verdict…</option>${STATUS.map(s=>`<option ${h.s===s?"selected":""}>${s}</option>`).join("")}</select><span></span></div>${PEOPLE.filter(x=>S.test&&S.test[x.id]&&S.test[x.id].h===h.id).map(x=>`<div class="note" style="margin:-2px 0 8px 12px">↳ You asked ${esc(x.name)}: "${esc(S.test[x.id].q)}"${S.test[x.id].a?` → ${esc(S.test[x.id].a)}`:""}</div>`).join("")}`).join("")}</div>
   <div class="card"><h3 style="margin-top:0">New from the interviews</h3><p class="note">Add at least 2 causes you didn't think of before.</p>
   ${intHyps().map(h=>`<div class="hyp"><input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" placeholder="A cause the interviews revealed">${catSel(h)}<button class="btn alt sm" data-del="${h.id}">✕</button></div>`).join("")}
   <p><button class="btn alt sm" onclick="addHyp('interview');save();render()">+ Add another</button></p></div>
@@ -396,6 +517,7 @@ function labRow(key,label,unit,kind="num"){
 function vLab(){
   const p=P();
   return `<div class="card"><h2>Lab bench</h2><p>Dr. Nair said "put numbers on it." Two problems test whether the steel could have carried its load once the fire heated it. Your numbers are unique to you. You get unlimited attempts, and the checker gives targeted hints for common mistakes. Answers within 2% count as correct.</p>
+  <p><b>Work each problem by hand first</b> (Given, Find, Solution, with your diagrams). After you get a problem right, you'll upload photos or a scan of your handwritten work, and it goes into the PDF report you submit.</p>
   <p class="note">These are simplified classroom models with classroom values, not the real bridge's dimensions.</p></div>
 
   <div class="card"><h3 style="margin-top:0">Problem 1: Bending in a fire-heated girder</h3>
@@ -411,7 +533,7 @@ function vLab(){
   ${labRow("pF2",`6. Factor of safety against yield at ${p.T}°C`,"")}
   <p><button class="btn" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
   ${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
-  ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>`:""}
+  ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>${uploadHTML("a")}`:""}
   </div>
 
   <div class="card"><h3 style="margin-top:0">Problem 2: Principal stresses in the girder web (Mohr's circle)</h3>
@@ -431,7 +553,7 @@ function vLab(){
   ${labRow("mQ","9. By this simple check (σ<sub>1</sub> vs. k<sub>y</sub>·F<sub>y</sub>), does the web yield?","",["Yes","No"])}
   <p><button class="btn" onclick="checkLab('b')">Check Problem 2</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
   ${(S.lab.bfb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
-  ${S.labDone.b?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: real yield criteria (Tresca, von Mises) use both principal stresses, so this check is a first look. What does it tell you about how much margin the fire took away?</p>`:""}
+  ${S.labDone.b?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: real yield criteria (Tresca, von Mises) use both principal stresses, so this check is a first look. What does it tell you about how much margin the fire took away?</p>${uploadHTML("b")}`:""}
   </div>${next()}`;
 }
 function near(v,t,tol=0.02){v=parseFloat(v);if(!isFinite(v))return false;return Math.abs(v-t)<=tol*Math.abs(t)+1e-9;}
@@ -481,7 +603,8 @@ function vRCA(){
   <div class="fish">${CATS.map(c=>`<div><b>${c}</b>${S.hyp.filter(h=>okHyp(h)&&h.c===c).map(h=>`<div class="${h.s==="Ruled out"?"x":""}">• ${esc(h.t)}</div>`).join("")||'<span class="note">(none yet)</span>'}</div>`).join("")}</div></div>
   <div class="card"><h3 style="margin-top:0">Step 2: 5 Whys</h3><p>Start at the collapse and keep asking "why?" Your chain should pass through the physics and keep going until you reach a decision that a person, company, or rule-maker could have made differently.</p>
   <p><b>Problem:</b> The northbound I-95 overpass collapsed.</p>
-  ${S.why.map((w,i)=>`<div class="why"><b>Why ${i+1}?</b><input type="text" data-why="${i}" value="${esc(w)}" placeholder="${i===0?"Because…":"And that happened because…"}"></div>`).join("")}</div>
+  ${S.why.map((w,i)=>`<div class="why"><b>Why ${i+1}?</b><input type="text" data-why="${i}" value="${esc(w)}" placeholder="${i===0?"Because…":"And that happened because…"}"></div>`).join("")}
+  ${coachHTML("whys")}</div>
   <div class="card"><h3 style="margin-top:0">Step 3: Moments of choice</h3><p>Virtues aren't labels you stick on people afterward. They show up at moments of choice, when the right action is <i>hard</i>: you're tired, there's a schedule, a check feels routine, or protection costs money. Pick three ⚖ moments from your evidence. Include at least one where a virtue was shown and one where it was missing.</p></div>
   ${S.mc.map((r,i)=>`<div class="rc mc"><h3>Moment ${i+1}</h3>
     <label>Moment of choice</label><select data-mc="${i}" data-f="m"><option value="">Choose…</option>${ch.map(k=>`<option value="${k}" ${r.m===k?"selected":""}>${k}: ${esc(CARDS[k].who)}: ${esc(CARDS[k].t.slice(0,70))}…</option>`).join("")}</select>
@@ -489,6 +612,7 @@ function vRCA(){
     <div><label>Which virtue was shown or missing?</label><select data-mc="${i}" data-f="virtue"><option value="">Choose…</option>${VIRTUES.map(o=>`<option ${r.virtue===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
     <label>What made the right action hard here? (pressures, routines, incentives, uncertainty)</label><textarea data-mc="${i}" data-f="hard">${esc(r.hard)}</textarea>
     <label>What would practical wisdom have looked like, or what system change would make the right choice easier?</label><textarea data-mc="${i}" data-f="wise">${esc(r.wise)}</textarea></div>`).join("")}
+  ${aiOn()?`<div class="card">${coachHTML("moments")}</div>`:""}
   <div class="card"><h3 style="margin-top:0">Step 4: Your three most important root causes</h3><p>Choose from your list, link the evidence, classify each one, and propose a prevention.</p>
   <p><b>Assignment requirements</b> (these come from this assignment, not from root cause analysis in general; they make sure your analysis spans both the physics and the people):</p>
   <div id="reqs">${reqHTML()}</div>${legend}</div>
@@ -524,35 +648,165 @@ function vReflect(){
 
 function reportText(){
   const p=P(),cards=allCards();
-  let t=`THE I-95 COLLAPSE INVESTIGATION: EGR 343\nName: ${S.name}\nCompletion code: ${code(S.name)}\n\n`;
+  let t=`THE I-95 COLLAPSE INVESTIGATION: EGR 343\nInvestigator code: ${S.name}\nCompletion code: ${code(S.name)}\n\n`;
   t+=`FIRST LIST (from the video), with verdicts after the interviews\n`;
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t}  ->  ${h.s}\n`;});
   t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
   t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in^4, c=${p.c} in, T=${p.T} C\n  Ay=${S.lab.pR} kip, Mmax=${S.lab.pM} kip-ft, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
   t+=`Problem 2: sx=${p.sx}, sy=${p.sy}, txy=${p.tau} ksi\n  center=${S.lab.mC}, R=${S.lab.mR}, s1=${S.lab.m1}, s2=${S.lab.m2}, theta_p1=${S.lab.mT} deg ${S.lab.mD}, tmax=${S.lab.mX}, kyFy=${S.lab.mY} ksi, yields? ${S.lab.mQ}  [attempts: ${S.tries.b||0}]\n  Unit slips caught: ${S.unitSlips||0}\n\n`;
+  t+=`Handwritten work: ${["a","b"].map(p=>`${PROB[p]}: ${FILES.filter(f=>f.prob===p).length} file(s)`).join("; ")} (attached at the end of this PDF)\n\n`;
   t+=`5 WHYS\nProblem: The northbound I-95 overpass collapsed.\n`;S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
   t+=`\nMOMENTS OF CHOICE\n`;
   S.mc.forEach((r,i)=>{const c=CARDS[r.m]||{who:"",t:""};t+=`${i+1}. ${r.m} (${c.who}): ${c.t}\n   Judgment: ${r.judge}; Virtue: ${r.virtue}\n   What made it hard: ${r.hard.trim()}\n   Practical wisdom / system change: ${r.wise.trim()}\n\n`;});
   t+=`TOP THREE ROOT CAUSES\n`;
   S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}]\n   Type: ${r.type}\n   Evidence: ${r.cards.map(c=>c+": "+(cards[c]?cards[c].t:"")).join("\n             ")}\n   Prevention: ${r.fix.trim()}\n\n`;});
+  const tr=(list)=>list.map(m=>`   ${m.role==="user"?"Me":m.who}: ${m.show??m.content}`).join("\n");
+  const own=PEOPLE.filter(x=>S.chat[x.id].length);
+  if(own.length){t+=`MY INTERVIEW QUESTIONS\n`;own.forEach(x=>{const tt=(S.test||{})[x.id];const h=tt&&hypById(tt.h);t+=`With ${x.name} (${x.role})${h?`, testing my guess "${h.t}"`:""}:\n${tr(S.chat[x.id])}\n\n`;});}
+  if(S.coach.whys.length||S.coach.moments.length){t+=`COACH CONVERSATIONS\n`;["whys","moments"].forEach(k=>{if(S.coach[k].length)t+=`${k==="whys"?"5 Whys":"Moments of choice"}:\n${tr(S.coach[k])}\n\n`;});}
   t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my current work:${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
   return t;
 }
 function vReport(){
+  const miss=["a","b"].filter(p=>!hasUp(p));
   return `<div class="card"><h2>Your report</h2>
-  <p>Completion code: <span class="code">${code(S.name)}</span></p>
-  <div class="noprint"><p><b>To submit:</b> copy the report and paste it into the Canvas assignment, or use Print → Save as PDF and upload the file.</p>
-  <p><button class="btn" onclick="copyRep(this)">Copy report</button> <button class="btn alt" onclick="try{window.print()}catch(e){}">Print / Save as PDF</button></p>
-  <p class="note">If printing doesn't open, use Copy report instead.</p></div>
+  <p>Investigator code: <b>${esc(S.name)}</b> &nbsp; Completion code: <span class="code">${code(S.name)}</span></p>
+  ${miss.length?`<div class="fb">Your handwritten work for ${miss.map(p=>PROB[p]).join(" and ")} isn't in this browser (did you switch devices?). Upload it below so it's included in your PDF.</div>${miss.map(uploadHTML).join("")}`:""}
+  <div class="noprint"><p><b>To submit:</b> download your PDF and upload it to the Canvas assignment. It includes this report and all your handwritten work.</p>
+  <p><button class="btn" ${miss.length?"disabled":""} onclick="downloadPDF(this)">Download my PDF report</button> <button class="btn alt" onclick="copyRep(this)">Copy report text</button></p>
+  <div id="pdfmsg" class="note"></div></div>
   <div id="report"><pre>${esc(reportText())}</pre></div></div>`;
 }
 function copyRep(b){navigator.clipboard.writeText(reportText()).then(()=>{b.textContent="Copied ✓";},()=>{b.textContent="Copy failed: select the text below";});}
 
+
+/* ================= HANDWRITTEN UPLOADS, PDF, BACKUP ================= */
+const IDB={db:null,
+  open(){return new Promise((res,rej)=>{try{const r=indexedDB.open("egr343-i95",1);r.onupgradeneeded=()=>r.result.createObjectStore("kv");r.onsuccess=()=>{this.db=r.result;res();};r.onerror=()=>rej(r.error);}catch(e){rej(e);}});},
+  get(k){return new Promise(res=>{try{const q=this.db.transaction("kv").objectStore("kv").get(k);q.onsuccess=()=>res(q.result);q.onerror=()=>res(undefined);}catch(e){res(undefined);}});},
+  set(k,v){return new Promise(res=>{try{const t=this.db.transaction("kv","readwrite");t.objectStore("kv").put(v,k);t.oncomplete=()=>res(true);t.onerror=()=>res(false);}catch(e){res(false);}});}};
+let FILES=[];
+async function loadFiles(){try{await IDB.open();FILES=(await IDB.get("files"))||[];}catch(e){FILES=[];}}
+function saveFiles(){if(IDB.db)IDB.set("files",FILES);}
+const hasUp=part=>FILES.some(f=>f.prob===part);
+const PROB={a:"Problem 1",b:"Problem 2"};
+function readAsDataURL(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result);r.onerror=()=>rej(r.error);r.readAsDataURL(file);});}
+async function toJpeg(file){
+  const url=URL.createObjectURL(file);
+  try{const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url;});
+    const k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement("canvas");
+    c.width=Math.round(img.naturalWidth*k);c.height=Math.round(img.naturalHeight*k);const g=c.getContext("2d");
+    g.fillStyle="#fff";g.fillRect(0,0,c.width,c.height);g.drawImage(img,0,0,c.width,c.height);return c.toDataURL("image/jpeg",0.8);}
+  finally{URL.revokeObjectURL(url);}
+}
+async function handleUpload(part,list){
+  const msgs=[];
+  for(const f of [...list]){
+    try{
+      if(f.type==="application/pdf"||/\.pdf$/i.test(f.name)){
+        if(f.size>15e6){msgs.push(`${f.name} is too large (15 MB max).`);continue;}
+        FILES.push({id:String(Date.now()+Math.random()),prob:part,name:f.name,type:"pdf",data:await readAsDataURL(f)});
+      }else{
+        FILES.push({id:String(Date.now()+Math.random()),prob:part,name:f.name,type:"jpg",data:await toJpeg(f)});
+      }
+    }catch(e){msgs.push(`Couldn't read ${f.name}. Please upload a JPG, PNG, or PDF. (On some computers, iPhone HEIC photos need to be saved as JPG first.)`);}
+  }
+  saveFiles();S._upmsg={part,msgs};render();
+}
+function uploadHTML(part){
+  const mine=FILES.filter(f=>f.prob===part);const um=S._upmsg&&S._upmsg.part===part?S._upmsg.msgs:[];
+  return `<div class="chat"><h4>Upload your handwritten work for ${PROB[part]}</h4>
+  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your free-body diagram and V and M diagrams"}. Upload every page. These go into the PDF you submit.</p>
+  <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">${mine.map(f=>`<div style="border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;text-align:center;font-size:.75rem;max-width:130px">${f.type==="jpg"?`<img src="${f.data}" alt="${esc(f.name)}" style="height:90px;display:block;margin:0 auto 2px">`:`<div style="font-size:2rem">📄</div>`}${esc(f.name.slice(0,22))}<br><button class="btn alt sm" data-rm="${f.id}">Remove</button></div>`).join("")}</div>
+  ${mine.length?`<p class="ok msg" style="margin:0">✓ ${mine.length} file${mine.length>1?"s":""} uploaded. Add more pages if needed.</p>`:`<p class="bad msg" style="margin:0">Required before you can continue.</p>`}
+  ${um.map(m=>`<div class="fb">${esc(m)}</div>`).join("")}
+  <input type="file" accept="image/*,application/pdf" multiple data-up="${part}" style="margin-top:6px"></div>`;
+}
+function dl(name,blob){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},2000);}
+function backup(){
+  try{dl(`I95-backup-${S.name||"investigation"}.json`,new Blob([JSON.stringify({v:3,S,files:FILES})],{type:"application/json"}));}
+  catch(e){S._alert="Couldn't download a backup here. Open the game from its GitHub link and try again.";render();}
+}
+async function restore(file){
+  if(!file)return;
+  try{const o=JSON.parse(await file.text());if(!o.S)throw 0;S=Object.assign(S,o.S);FILES=o.files||[];save();saveFiles();S._alert="Backup restored. Welcome back, investigator "+S.name+".";}
+  catch(e){S._alert="That file isn't a valid backup.";}
+  render();
+}
+const helpLink=()=>HELP_URL?`<a href="${HELP_URL}" target="_blank" rel="noopener">Game help discussion</a> on Canvas`:`"Game help" discussion on Canvas`;
+const footer=()=>`<details class="card noprint" style="margin-top:28px"><summary style="cursor:pointer;font-weight:700;color:var(--maroon)">Stuck? Quick fixes</summary>
+  <dl style="margin:8px 0 0">
+   <dt><b>My work disappeared.</b></dt><dd>Open the game on the same device and browser you used before, not in a private window. If you made a backup, use <b>Restore from a backup</b> below.</dd>
+   <dt><b>My photo won't upload.</b></dt><dd>Use JPG, PNG, or PDF, 15 MB or less. iPhone HEIC photos may not work on Windows. Scan to PDF with your phone instead.</dd>
+   <dt><b>My answer is marked wrong, but I'm sure it's right.</b></dt><dd>Read the hint under the Check button. Check your units (kip·ft vs. kip·in) and signs, and keep 3–4 significant figures rather than rounding early. Answers within 2% count.</dd>
+   <dt><b>A character or the coach isn't answering.</b></dt><dd>If the AI is down, that step becomes optional automatically. Keep going.</dd>
+   <dt><b>The video won't play.</b></dt><dd>Use the YouTube link under the video.</dd>
+   <dt><b>The PDF won't download.</b></dt><dd>Check your Downloads folder, and try Chrome. If it still fails, use <b>Copy report text</b>, paste it into the Canvas assignment, and upload your photos there. You won't lose points for a technical problem.</dd>
+   <dt><b>Still stuck?</b></dt><dd>Post in the ${helpLink()}. Others may have the same question.</dd>
+  </dl></details>
+  <div class="card noprint note">💾 <b>Your work saves automatically in this browser.</b> Switching devices? <button class="btn alt sm" onclick="backup()">Download a backup</button> <label class="btn alt sm" style="display:inline-block;padding:4px 10px">Restore from a backup<input type="file" accept=".json,application/json" style="display:none" onchange="restore(this.files[0])"></label></div>`;
+
+/* --- PDF --- */
+async function loadPdfLib(){
+  if(window.PDFLib)return;
+  const load=src=>new Promise((res,rej)=>{const sc=document.createElement("script");sc.src=src;sc.onload=res;sc.onerror=rej;document.head.appendChild(sc);});
+  try{await load("pdf-lib.min.js");}catch(e){}            // copy kept in the GitHub repo
+  if(!window.PDFLib)await load("https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"); // backup source
+}
+const WINANSI="€‚ƒ„…†‡ˆ‰Š‹ŒŽ‘’“”•–—˜™š›œžŸ";
+function pdfSafe(str){
+  const map={"σ":"sigma","θ":"theta","τ":"tau","₁":"1","₂":"2","⁴":"^4","³":"^3","²":"^2","≈":"~","✓":"OK","⚖":"","→":"->","≥":">=","≤":"<=","−":"-","√":"sqrt"};
+  let out="";for(const ch of String(str)){const m=map[ch];const c=m!==undefined?m:ch;
+    for(const x of c){const k=x.charCodeAt(0);out+=(x==="\n"||(k>=32&&k<127)||(k>=0xA0&&k<=0xFF)||WINANSI.includes(x))?x:"?";}}
+  return out;
+}
+const b64bytes=dataURL=>{const b=atob(dataURL.split(",")[1]);const u=new Uint8Array(b.length);for(let i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u;};
+async function makePDF(){
+  await loadPdfLib();const {PDFDocument,StandardFonts}=window.PDFLib;
+  const doc=await PDFDocument.create();const font=await doc.embedFont(StandardFonts.Helvetica);const bold=await doc.embedFont(StandardFonts.HelveticaBold);
+  const W=612,H=792,M=54,size=10,lh=13.5;let page=doc.addPage([W,H]);let y=H-M;
+  const newPage=()=>{page=doc.addPage([W,H]);y=H-M;};
+  const line=(txt,f,sz)=>{if(y<M){newPage();}page.drawText(txt,{x:M,y,size:sz,font:f});y-=lh*sz/size;};
+  const para=(txt)=>{
+    for(const raw of pdfSafe(txt).split("\n")){
+      if(!raw.trim()){y-=lh*0.6;continue;}
+      const head=/^[A-Z0-9][A-Z0-9 ():,&.'\/-]+$/.test(raw.trim())&&raw.trim().length>3;const f=head?bold:font,sz=head?11:size;
+      if(head)y-=4;
+      const ind=raw.match(/^\s*/)[0];let cur=ind;
+      for(const w of raw.trim().split(/\s+/)){const test=cur.trim()?cur+" "+w:ind+w;
+        if(f.widthOfTextAtSize(test,sz)>W-2*M&&cur.trim()){line(cur,f,sz);cur=ind+"   "+w;}else cur=test;}
+      line(cur,f,sz);
+    }
+  };
+  para(reportText());
+  for(const part of ["a","b"]){
+    const mine=FILES.filter(f=>f.prob===part);
+    for(let i=0;i<mine.length;i++){const f=mine[i];const title=pdfSafe(`Handwritten work: ${PROB[part]} (page ${i+1} of ${mine.length}): ${f.name}`);
+      newPage();page.drawText(title,{x:M,y:H-M,size:11,font:bold});
+      try{
+        if(f.type==="jpg"){const img=await doc.embedJpg(b64bytes(f.data));const k=Math.min((W-2*M)/img.width,(H-2*M-24)/img.height);
+          page.drawImage(img,{x:M,y:H-M-24-img.height*k,width:img.width*k,height:img.height*k});}
+        else{page.drawText("(Attached PDF follows.)",{x:M,y:H-M-18,size:10,font});
+          const src=await PDFDocument.load(b64bytes(f.data),{ignoreEncryption:true});const pages=await doc.copyPages(src,src.getPageIndices());pages.forEach(pg=>doc.addPage(pg));}
+      }catch(e){page.drawText("(This file could not be attached. Upload it to Canvas separately.)",{x:M,y:H-M-18,size:10,font});}
+    }
+  }
+  return await doc.save();
+}
+async function downloadPDF(btn){
+  const msg=document.getElementById("pdfmsg");const old=btn.textContent;btn.disabled=true;btn.textContent="Building your PDF…";
+  try{const bytes=await makePDF();dl(`I95-investigation-${S.name}.pdf`,new Blob([bytes],{type:"application/pdf"}));msg.innerHTML='<span class="ok">✓ PDF downloaded. Check your Downloads folder, then upload it to Canvas.</span>';}
+  catch(e){msg.innerHTML='<span class="bad">Couldn\'t build the PDF here. Make sure you opened the game from its GitHub link. If it still fails, click Copy report text, paste it into Canvas, and upload your photos there too.</span>';}
+  btn.disabled=false;btn.textContent=old;
+}
+
 /* ================= EVENT WIRING ================= */
 function wire(){
   const m=document.getElementById("main");
-  const nm=document.getElementById("nm");if(nm)nm.addEventListener("input",()=>{S.name=nm.value;save();refresh();});
+  const nm=document.getElementById("nm");if(nm)nm.addEventListener("input",()=>{S.name=nm.value.trim();save();const cm=document.getElementById("codeMsg");if(cm)cm.innerHTML=codeMsg();refresh();});
   const on=(sel,fn)=>m.querySelectorAll(sel).forEach(el=>el.addEventListener(el.tagName==="SELECT"?"change":"input",()=>fn(el)));
+  m.querySelectorAll("[data-up]").forEach(el=>el.addEventListener("change",()=>{if(el.files&&el.files.length)handleUpload(el.dataset.up,el.files);}));
+  m.querySelectorAll("[data-rm]").forEach(el=>el.addEventListener("click",()=>{FILES=FILES.filter(f=>f.id!==el.dataset.rm);saveFiles();render();}));
   on("[data-h]",el=>{const h=hypById(el.dataset.h);if(h){h[el.dataset.f]=el.value;save();refresh();}});
   m.querySelectorAll("[data-del]").forEach(el=>el.addEventListener("click",()=>{S.hyp=S.hyp.filter(h=>h.id!==el.dataset.del);save();render();}));
   on("[data-lab]",el=>{S.lab[el.dataset.lab]=el.value;save();if(el.dataset.lab==="mC"||el.dataset.lab==="mR")drawMohr();});
@@ -567,7 +821,7 @@ function wire(){
 
 /* ================= INSTRUCTOR CHECKER (#checker) ================= */
 function vChecker(){
-  return `<div class="card"><h2>Instructor checker</h2><p>Enter a student's name exactly as it appears in Canvas to see their expected completion code and lab answers.</p>
+  return `<div class="card"><h2>Instructor checker</h2><p>Enter a student's investigator code (from their report) to see their expected completion code and lab answers. Codes aren't case-sensitive.</p>
   <input id="cn" type="text" oninput="chk(this.value)"><div id="co" style="margin-top:12px"></div></div>`;
 }
 function chk(n){
@@ -582,7 +836,8 @@ function route(){
   else{if(!STAGES.some(s=>s[0]===S.stage)||!unlocked(S.stage))S.stage=S.locked?"interviews":"video";if(!unlocked(S.stage))S.stage="video";render();}
 }
 window.addEventListener("hashchange",route);
-route();
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
+loadFiles().then(route);
 </script>
 </body>
 </html>
