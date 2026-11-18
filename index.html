@@ -78,6 +78,15 @@
   @media(max-width:700px){.figrow{grid-template-columns:1fr}}
   .code{font-family:ui-monospace,Menlo,monospace;font-size:1.4rem;letter-spacing:2px;background:var(--maroon);color:var(--gold);padding:6px 14px;border-radius:8px;display:inline-block}
   #report pre{white-space:pre-wrap;font-family:inherit}
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  .skip{position:absolute;left:-9999px;top:0;background:var(--gold);color:#000;padding:8px 12px;z-index:10;font-weight:700}
+  .skip:focus{left:8px;top:8px}
+  :focus-visible{outline:3px solid #1565c0;outline-offset:2px}
+  button.ev{font:inherit;font-size:.88rem;text-align:left;color:inherit;cursor:pointer}
+  .ev .kind{display:block;font-size:.72rem;font-weight:700;letter-spacing:.03em;text-transform:uppercase;color:var(--muted)}
+  .chip.sel .kind{color:var(--gold)}
+  .listen{background:none;border:1px solid #cfd8dc;border-radius:6px;font:inherit;font-size:.8rem;padding:2px 8px;cursor:pointer;margin-left:6px}
+  dl.gloss dt{font-weight:700;margin-top:6px} dl.gloss dd{margin-left:16px}
   .chat{border:1px solid #cfd8dc;border-radius:10px;padding:12px;margin-top:12px;background:#f7fafc}
   .chat h4{margin:0 0 6px;color:var(--blue)}
   .bubble{padding:8px 11px;border-radius:10px;margin:6px 0;max-width:88%}
@@ -94,14 +103,16 @@
   <h1>The I-95 Collapse Investigation</h1>
   <p>EGR 343 Mechanics of Materials · A root cause analysis of the June 11, 2023 overpass collapse in Philadelphia</p>
 </header>
-<nav id="nav"></nav>
-<main id="main"></main>
+<a class="skip" href="#main">Skip to main content</a>
+<nav id="nav" aria-label="Investigation steps"></nav>
+<main id="main" tabindex="-1"></main>
+<div id="announce" class="sr-only" aria-live="polite"></div>
 
 <script>
 /* ================= AI SETTINGS =================
    Paste your Cloudflare Worker URL between the quotes, e.g. "https://i95-ai.yourname.workers.dev".
    Leave it empty to run the game without AI (the AI steps are then skipped). */
-const AI_URL="";
+const AI_URL="https://i95-ai.nkellam.workers.dev";
 /* Paste the link to your Canvas "Game help" discussion here (optional). */
 const HELP_URL="";
 
@@ -223,7 +234,8 @@ const hypById=id=>S.hyp.find(h=>h.id===id);
 
 /* ================= AI ================= */
 let busy=null; // which chat is waiting for a reply
-const aiOn=()=>!!AI_URL&&!S.aiFail;
+let aiDown=false; // resets each visit, so a temporary outage doesn't turn the AI off for good
+const aiOn=()=>!!AI_URL&&!aiDown;
 const testDone=pid=>!!(S.test&&S.test[pid]&&S.test[pid].done);
 const coached=sec=>S.coach[sec].some(m=>m.role==="assistant");
 async function callAI(payload){
@@ -232,10 +244,13 @@ async function callAI(payload){
   const d=await r.json();if(!d.reply)throw new Error("empty");return d.reply;
 }
 function aiError(){
-  S.aiFail=true;save();
+  aiDown=true;
   return "The AI isn't responding right now, so this step is optional for you. Keep going with the rest of the investigation.";
 }
-function bubbles(list){return list.map(m=>`<div class="bubble ${m.role}"><span class="lbl">${m.role==="user"?"You":esc(m.who||"")}</span>${esc(m.show??m.content)}</div>`).join("");}
+const canSpeak=()=>"speechSynthesis" in window;
+function speak(t){try{speechSynthesis.cancel();speechSynthesis.speak(new SpeechSynthesisUtterance(t));}catch(e){}}
+const listenBtn=t=>canSpeak()?`<button type="button" class="listen" onclick="speak(this.dataset.t)" data-t="${esc(t)}"><span aria-hidden="true">🔊</span> Listen</button>`:"";
+function bubbles(list){return list.map(m=>`<div class="bubble ${m.role}"><span class="lbl">${m.role==="user"?"You":esc(m.who||"")}${m.role==="assistant"?listenBtn(m.content):""}</span>${esc(m.show??m.content)}</div>`).join("");}
 async function askOwn(pid){
   const inp=document.getElementById("own_"+pid);const q=(inp.value||"").trim();if(!q||busy)return;
   const who=PEOPLE.find(x=>x.id===pid).name;
@@ -271,7 +286,7 @@ function testHTML(pid){
   <p class="note" style="margin:0">Real investigators come to interviews with hypotheses. Pick one guess from your first list that ${esc(p.name)} might be able to confirm or challenge, and ask a question that would test it. ${aiOn()?`${esc(p.name.split(" ")[0])} answers only from what's in the record.`:""} The standard questions open after you ask.</p>
   <label>Guess you're testing</label><select id="th_${pid}"><option value="">Choose…</option>${opts}</select>
   <label>Your question for ${esc(p.name)}</label>
-  ${busy===pid?'<div class="thinking">…thinking</div>':""}
+  ${busy===pid?'<div class="thinking" role="status">…thinking</div>':""}
   <div class="chatin"><input type="text" id="tq_${pid}" placeholder="e.g., Could the driver have seen the warning sign?" onkeydown="if(event.key==='Enter')askTest('${pid}')"><button class="btn sm" ${busy?"disabled":""} onclick="askTest('${pid}')">Ask</button></div>
   <div id="tmsg_${pid}" class="note"></div></div>`;
 }
@@ -294,7 +309,7 @@ function chatHTML(pid){
   const p=PEOPLE.find(x=>x.id===pid);
   return `<div class="chat"><h4>Follow-up questions for ${esc(p.name)} (optional)</h4>
   <p class="note" style="margin:0">Curious about something else? Ask. ${esc(p.name.split(" ")[0])} answers only from what's in the record and will say so when something isn't known.</p>
-  ${bubbles(S.chat[pid].slice(2))}${busy===pid?'<div class="thinking">…thinking</div>':""}
+  ${bubbles(S.chat[pid].slice(2))}${busy===pid?'<div class="thinking" role="status">…thinking</div>':""}
   <div class="chatin"><input type="text" id="own_${pid}" placeholder="e.g., Why would a driver not notice an open manhole cover?" onkeydown="if(event.key==='Enter')askOwn('${pid}')"><button class="btn sm" ${busy?"disabled":""} onclick="askOwn('${pid}')">Ask</button></div></div>`;
 }
 function coachHTML(sec){
@@ -303,7 +318,7 @@ function coachHTML(sec){
   const has=S.coach[sec].length>0;
   return `<div class="chat"><h4>Coach: ${label}</h4>
   <p class="note" style="margin:0">The coach reads your current ${label} and asks you one question to push your thinking. It won't give you answers. Revise your work, then share it again or reply. Ask the coach at least once.</p>
-  ${bubbles(S.coach[sec])}${busy===sec?'<div class="thinking">…thinking</div>':""}
+  ${bubbles(S.coach[sec])}${busy===sec?'<div class="thinking" role="status">…thinking</div>':""}
   ${has?`<div class="chatin"><input type="text" id="coachin_${sec}" placeholder="Reply to the coach (optional). Your current work is shared automatically." onkeydown="if(event.key==='Enter')askCoach('${sec}')"><button class="btn sm" ${busy?"disabled":""} onclick="askCoach('${sec}')">Send</button></div>`
   :`<p><button class="btn sm" ${busy?"disabled":""} onclick="askCoach('${sec}')">Ask the coach about my ${label}</button></p>`}</div>`;
 }
@@ -361,26 +376,50 @@ function rcaErrors(){
 }
 
 /* ================= RENDER ================= */
-function go(st){
+let stepChanged=false;
+function go(st){stepChanged=st!==S.stage;
   if(S.stage==="video"&&st!=="video"&&done("video")){S.locked=true;S.hyp=S.hyp.filter(h=>h.src!=="video"||okHyp(h));}
   if(st==="interviews")give("H1");
   if(st==="update"&&!intHyps().length){addHyp("interview");addHyp("interview");}
   S.stage=st;save();render();window.scrollTo(0,0);
 }
 function render(){
+  const fid=document.activeElement&&document.activeElement.id;
   renderNav();
   const al=S._alert?`<div class="fb">${esc(S._alert)}</div>`:"";S._alert=null;
   document.getElementById("main").innerHTML=al+({video:vVideo,interviews:vInt,update:vUpdate,lab:vLab,rca:vRCA,reflect:vReflect,report:vReport}[S.stage])()+footer();
   S._upmsg=null;
   wire();
   if(S.stage==="lab")drawMohr();
+  autoLabel();
+  if(stepChanged){stepChanged=false;const h=document.querySelector("main h2");if(h){h.setAttribute("tabindex","-1");h.focus();}
+    document.getElementById("announce").textContent=STAGES.find(x=>x[0]===S.stage)[1];}
+  else if(fid){const el=document.getElementById(fid);if(el)el.focus();}
 }
-function renderNav(){document.getElementById("nav").innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}</button>`).join("");}
+/* Connect each visible <label> to the next form control so screen readers announce it. */
+function autoLabel(){
+  let n=0;document.querySelectorAll("main label:not([for])").forEach(lb=>{
+    if(lb.querySelector("input,select,textarea"))return;
+    let el=lb.nextElementSibling;
+    if(el&&!/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName))el=el.querySelector("input,select,textarea");
+    if(el&&/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)){if(!el.id)el.id="f_auto_"+(n++);lb.htmlFor=el.id;}
+  });
+  document.querySelectorAll("main input:not([type=file]):not([aria-label]),main select:not([aria-label]),main textarea:not([aria-label])").forEach(el=>{
+    if(el.id&&document.querySelector(`label[for="${el.id}"]`))return;
+    if(el.placeholder)el.setAttribute("aria-label",el.placeholder);
+  });
+  document.querySelectorAll('main input[type=file]:not([aria-label])').forEach(el=>el.setAttribute("aria-label",el.dataset.up?"Upload handwritten or digital work for "+PROB[el.dataset.up]:"Choose a backup file"));
+}
+function renderNav(){document.getElementById("nav").innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${S.stage===k?'aria-current="step"':""} ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}${done(k)?'<span class="sr-only"> (complete)</span>':""}</button>`).join("");}
 function refresh(){renderNav();const b=document.getElementById("nextBtn");if(b)b.disabled=!done(S.stage);const e=document.getElementById("err");if(e&&S.stage==="rca")e.innerHTML=errHTML();const q=document.getElementById("reqs");if(q)q.innerHTML=reqHTML();}
 function next(){const i=STAGES.findIndex(s=>s[0]===S.stage);const n=STAGES[i+1];return n?`<p><button id="nextBtn" class="btn" ${done(S.stage)?"":"disabled"} onclick="go('${n[0]}')">Continue to ${n[1].replace(/^\d+\.\s/,"")} →</button></p>`:"";}
-function evHTML(id,c,extra=""){return `<span class="ev ${c.k} ${extra}" data-id="${id}">${c.who?`<span class="who">⚖ ${esc(c.who)}</span>`:""}<span class="id">${id}</span>${esc(c.t)}</span>`;}
-const legend=`<div class="legend note"><span><i style="background:#fff;border:1px solid #ccc"></i>Technical</span><span><i style="background:#7b5ea7"></i>Human & organizational</span><span><i style="background:var(--teal)"></i>⚖ Moment of choice</span><span><i style="background:var(--gold)"></i>Your lab result</span></div>`;
-const catSel=h=>`<select data-h="${h.id}" data-f="c"><option value="">Category…</option>${CATS.map(c=>`<option ${h.c===c?"selected":""}>${c}</option>`).join("")}</select>`;
+const KIND={tech:"Technical",human:"Human & organizational",choice:"Moment of choice",calc:"Your lab result"};
+function evHTML(id,c,extra=""){
+  const inner=`<span class="kind">${c.k==="choice"?'<span aria-hidden="true">⚖ </span>':""}${KIND[c.k]}${c.who?": "+esc(c.who):""}</span><span class="id">${id}</span>${esc(c.t)}`;
+  if(extra.includes("chip"))return `<button type="button" class="ev ${c.k} ${extra}" data-id="${id}" aria-pressed="${extra.includes("sel")}">${inner}</button>`;
+  return `<span class="ev ${c.k} ${extra}" data-id="${id}">${inner}</span>`;}
+const legend=`<div class="legend note" aria-hidden="true"><span><i style="background:#fff;border:1px solid #ccc"></i>Technical</span><span><i style="background:#7b5ea7"></i>Human & organizational</span><span><i style="background:var(--teal)"></i>⚖ Moment of choice</span><span><i style="background:var(--gold)"></i>Your lab result</span></div>`;
+const catSel=h=>`<select data-h="${h.id}" data-f="c" aria-label="Category"><option value="">Category…</option>${CATS.map(c=>`<option ${h.c===c?"selected":""}>${c}</option>`).join("")}</select>`;
 
 function vVideo(){
   return `<div class="card" style="border:2px solid var(--gold)"><h2>Before you start</h2>
@@ -390,21 +429,24 @@ function vVideo(){
    <li><b>Have paper, a pencil, and your calculator.</b> You'll solve two problems by hand and upload photos of your work.</li>
    <li><b>Know how you'll get photos onto your computer.</b> The easiest way is to scan your pages to a PDF with your phone (iPhone Notes app or Google Drive's scan feature), then email, AirDrop, or upload it to yourself. iPhone photos (HEIC) may not upload on Windows. Use PDF or JPG.</li>
    <li><b>Don't use a private or incognito window.</b> Your work won't be saved.</li>
+   <li><b>There are no time limits.</b> You can work at your own pace. Prefer to speak instead of type? Your device's built-in dictation works in every text box. Characters' answers have a <b>Listen</b> button.</li>
+   <li><b>Content note:</b> this case involves a fatal crash. The truck driver died. The game treats him with respect, and you can pause at any time. If this topic is hard for you, reach out to your instructor.</li>
+   <li><b>Accommodations:</b> if you use a screen reader, can't write by hand, or need another format, contact your instructor. Typed or tablet work is accepted in place of handwriting.</li>
   </ul></div>
   <div class="card"><h2>Watch and make your first guesses</h2>
   <p>Early on Sunday morning, June 11, 2023, a gasoline tanker truck crashed on an exit ramp in Northeast Philadelphia and caught fire. Within the hour, part of Interstate 95, which carries about 160,000 vehicles a day, had collapsed.</p>
   <p>You're joining the investigation. Start the way real investigators do: look at the evidence you have and write down your first hypotheses about <b>why</b> this happened.</p>
   <div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${VIDEO_ID}" title="Philadelphia I-95 Bridge Collapse Explained (Practical Engineering)" allow="encrypted-media; picture-in-picture" allowfullscreen></iframe></div>
-  <p class="note">If the video doesn't load, watch it on YouTube: <a href="https://www.youtube.com/watch?v=${VIDEO_ID}" target="_blank" rel="noopener">Philadelphia I-95 Bridge Collapse Explained</a> (Practical Engineering, about 17 min). It was made five weeks after the collapse, before the official investigation finished, so it can't tell you everything.</p>
+  <p class="note">If the video doesn't load, watch it on YouTube: <a href="https://www.youtube.com/watch?v=${VIDEO_ID}" target="_blank" rel="noopener">Philadelphia I-95 Bridge Collapse Explained</a> (Practical Engineering, about 17 min). It was made five weeks after the collapse, before the official investigation finished, so it can't tell you everything. The video has captions (CC button), and a <a href="https://practical.engineering/blog/2023/7/18/philadelphia-i-95-bridge-collapse-explained" target="_blank" rel="noopener">full written transcript</a> is available if you'd rather read.</p>
   <label for="nm">Make up an investigator code</label>
   <input id="nm" type="text" maxlength="20" value="${esc(S.name)}" placeholder="e.g., rivet42" ${S.locked&&validCode()?"disabled":""}>
-  <div id="codeMsg" class="note">${codeMsg()}</div>
+  <div id="codeMsg" class="note" aria-live="polite">${codeMsg()}</div>
   <p class="note">Use 4–20 letters or numbers, with no spaces and nothing personal (not your name or student ID). Your code sets your own lab numbers and is printed on your report, so <b>write it down</b>. You'll submit through your own Canvas account, so your instructor will still know it's your work. Your code and your work are never linked to your name in this game.</p>
   <div class="say"><b>Your work saves automatically</b> in this browser on this device, including the photos of your handwritten work that you'll upload later. To finish later, come back on the <b>same device and browser</b>, and don't use a private or incognito window. Need to switch devices? Click <b>Download a backup</b> at the bottom of any page, then <b>Restore from a backup</b> on the other device.</div></div>
   <div class="card"><h3 style="margin-top:0">Your first list of root causes</h3>
   <p>Write at least <b>4</b> possible causes, and tag each one with a category. Think beyond "the truck crashed": people, equipment, rules, the structure, the site. ${S.locked?"<b>This list is now locked</b> so you can compare it with what you learn.":"Once you move on, this list locks."}</p>
   <div class="say"><b>Why categories?</b> Investigators sort causes into categories, called a fishbone diagram, so they don't stop at the first obvious cause. Real investigations, like the NTSB's, look at the people involved, the equipment, the organizations and rules, the structure, and the site.<br><b>Looking ahead:</b> at the end, you'll choose your three most important root causes. For this assignment, they must include <b>(1)</b> at least one <b>Structure & materials</b> cause backed by your own lab calculation, and <b>(2)</b> at least one <b>People</b> or <b>Rules & organizations</b> cause. Keep both kinds in mind as you investigate.</div>
-  ${vidHyps().map(h=>`<div class="hyp">${S.locked?`<div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><span></span>`:`<input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" placeholder="e.g., The truck was going too fast for the ramp">${catSel(h)}<button class="btn alt sm" data-del="${h.id}">✕</button>`}</div>`).join("")}
+  ${vidHyps().map(h=>`<div class="hyp">${S.locked?`<div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><span></span>`:`<input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" aria-label="Possible cause" placeholder="e.g., The truck was going too fast for the ramp">${catSel(h)}<button class="btn alt sm" data-del="${h.id}" aria-label="Remove this cause">✕</button>`}</div>`).join("")}
   ${S.locked?"":`<p><button class="btn alt sm" onclick="addHyp('video');save();render()">+ Add another</button></p><p class="note">Each cause needs at least 3 words and a category.</p>`}
   </div>${next()}`;
 }
@@ -416,7 +458,7 @@ function vInt(){
   <p class="note">The characters are fictional. Their facts come from the NTSB's final report (HIR-25-01, 2025) and from news coverage of the investigation. The driver, who died in the crash, is not named here. This investigation asks what systems put a person in that situation, not only what he did.</p></div>
   <div class="card"><h3 style="margin-top:0">${p.name}, ${p.role}</h3>
   ${testHTML(p.id)}
-  ${!testDone(p.id)?"":p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" onclick="ask('${p.id}',${i})">${S.asked[k]?"✓ ":"❓ "}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
+  ${!testDone(p.id)?"":p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" id="q_${k}" onclick="ask('${p.id}',${i})"><span aria-hidden="true">${S.asked[k]?"✓ ":"❓ "}</span>${S.asked[k]?'<span class="sr-only">Asked: </span>':""}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])} ${listenBtn(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
   ${chatHTML(p.id)}
   </div>
   <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
@@ -427,9 +469,9 @@ function vUpdate(){
   return `<div class="card"><h2>Update your list</h2>
   <p>Now compare your first guesses with the evidence. For each one, decide: was it <b>supported</b>, does it need to be <b>revised</b>, was it <b>ruled out</b>, or is there <b>not enough evidence</b>? Then add the causes the video didn't show you. Look especially at the human and organizational evidence.</p></div>
   <div class="card"><h3 style="margin-top:0">From the video</h3>
-  ${vidHyps().map(h=>`<div class="hyp st"><div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><select data-h="${h.id}" data-f="s"><option value="">Verdict…</option>${STATUS.map(s=>`<option ${h.s===s?"selected":""}>${s}</option>`).join("")}</select><span></span></div>${PEOPLE.filter(x=>S.test&&S.test[x.id]&&S.test[x.id].h===h.id).map(x=>`<div class="note" style="margin:-2px 0 8px 12px">↳ You asked ${esc(x.name)}: "${esc(S.test[x.id].q)}"${S.test[x.id].a?` → ${esc(S.test[x.id].a)}`:""}</div>`).join("")}`).join("")}</div>
+  ${vidHyps().map(h=>`<div class="hyp st"><div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><select data-h="${h.id}" data-f="s" aria-label="Verdict for: ${esc(h.t)}"><option value="">Verdict…</option>${STATUS.map(s=>`<option ${h.s===s?"selected":""}>${s}</option>`).join("")}</select><span></span></div>${PEOPLE.filter(x=>S.test&&S.test[x.id]&&S.test[x.id].h===h.id).map(x=>`<div class="note" style="margin:-2px 0 8px 12px">↳ You asked ${esc(x.name)}: "${esc(S.test[x.id].q)}"${S.test[x.id].a?` → ${esc(S.test[x.id].a)}`:""}</div>`).join("")}`).join("")}</div>
   <div class="card"><h3 style="margin-top:0">New from the interviews</h3><p class="note">Add at least 2 causes you didn't think of before.</p>
-  ${intHyps().map(h=>`<div class="hyp"><input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" placeholder="A cause the interviews revealed">${catSel(h)}<button class="btn alt sm" data-del="${h.id}">✕</button></div>`).join("")}
+  ${intHyps().map(h=>`<div class="hyp"><input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" aria-label="New cause from the interviews" placeholder="A cause the interviews revealed">${catSel(h)}<button class="btn alt sm" data-del="${h.id}" aria-label="Remove this cause">✕</button></div>`).join("")}
   <p><button class="btn alt sm" onclick="addHyp('interview');save();render()">+ Add another</button></p></div>
   <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
 }
@@ -439,7 +481,7 @@ const DEFS=`<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWi
 function beamSVG(p){
   let arrows="";for(let i=0;i<=10;i++){const x=60+40*i;arrows+=`<line x1="${x}" y1="52" x2="${x}" y2="94" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>`;}
   let flames="";[200,235,270,305].forEach((x,i)=>{flames+=`<path d="M${x},176 q-12,-18 0,-34 q4,12 10,6 q8,14 -2,28 z" fill="#f57c00" opacity=".75"/>`;});
-  return `<svg class="fig" viewBox="0 0 720 250" role="img" aria-label="Simply supported girder with uniform load w over span L, and I-shaped cross-section showing c and the neutral axis" style="color:#191919">${DEFS}
+  return `<svg class="fig" viewBox="0 0 720 250" role="img" aria-label="Simply supported girder: pin support at A on the left, roller support at B on the right, span L = ${p.L} feet, carrying a uniform downward load w = ${p.w} kips per foot along its full length, with fire beneath it. Beside it, an I-shaped cross-section with a horizontal neutral axis through its middle; c = ${p.c} inches is the distance from the neutral axis to the top fiber, and I = ${p.I} inches to the fourth." style="color:#191919">${DEFS}
   <line x1="60" y1="52" x2="460" y2="52" stroke="currentColor" stroke-width="1.6"/>${arrows}
   <text x="260" y="40" text-anchor="middle" font-size="16" font-style="italic">w = ${p.w} kip/ft</text>
   <rect x="60" y="98" width="400" height="18" fill="#9e9e9e" stroke="currentColor"/>
@@ -472,7 +514,7 @@ function elementSVG(p){
   s+=t?a(80,105,80,155,Gc):a(80,155,80,105,Gc);             // -x face
   s+=t?a(105,80,155,80,Gc):a(155,80,105,80,Gc);             // +y face
   s+=t?a(155,180,105,180,Gc):a(105,180,155,180,Gc);         // -y face
-  return `<svg class="fig" viewBox="0 0 260 260" role="img" aria-label="Plane stress element with sigma x, sigma y and tau xy">${DEFS}
+  return `<svg class="fig" viewBox="0 0 260 260" role="img" aria-label="Square plane stress element. Sigma x = ${p.sx} ksi on the left and right faces, ${p.sx>0?"tension, arrows pointing outward":"compression, arrows pointing inward"}. Sigma y = ${p.sy} ksi on the top and bottom faces, ${p.sy>0?"tension, arrows pointing outward":"compression, arrows pointing inward"}. Shear tau xy = ${p.tau} ksi: on the right face it acts ${p.tau>0?"upward":"downward"}, and on the top face it acts ${p.tau>0?"to the right":"to the left"}.">${DEFS}
    <rect x="90" y="90" width="80" height="80" fill="#f4eef0" stroke="#191919" stroke-width="1.5"/>
    ${s}
    <text x="226" y="122" font-size="13" fill="${R}" font-style="italic">σx</text>
@@ -489,7 +531,7 @@ function drawMohr(){
   let xmin=Math.min(0,mid-hr),xmax=Math.max(0,mid+hr);
   const k=Math.min((W-2*pad)/(xmax-xmin),(H-2*pad)/(2*hr));
   const X=v=>pad+(v-xmin)*k, Y=t=>H/2+t*k;      // tau positive DOWN
-  let s=`<svg class="fig" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mohr's circle plot" style="color:#555">${DEFS}`;
+  let s=`<svg class="fig" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mohr's circle plot with sigma on the horizontal axis and tau plotted positive downward. The x-face point is at (${p.sx}, ${p.tau}) and the y-face point is at (${p.sy}, ${-p.tau}).${isFinite(parseFloat(S.lab.mC))&&isFinite(parseFloat(S.lab.mR))?` Your circle has center ${S.lab.mC} and radius ${S.lab.mR}.`:""}" style="color:#555">${DEFS}`;
   s+=`<line x1="${pad-10}" y1="${H/2}" x2="${W-10}" y2="${H/2}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${W-14}" y="${H/2-8}" font-size="15" text-anchor="end" font-style="italic">σ (ksi)</text>`;
   s+=`<line x1="${X(0)}" y1="14" x2="${X(0)}" y2="${H-8}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${X(0)+8}" y="${H-12}" font-size="15" font-style="italic">τ (+ down)</text>`;
   // student circle
@@ -512,12 +554,12 @@ function drawMohr(){
 function labRow(key,label,unit,kind="num"){
   const v=S.lab[key]??"";const st=S.lab[key+"_ok"];
   const inp=kind==="num"?`<input id="${key}" type="number" step="any" value="${esc(v)}" data-lab="${key}">`:`<select id="${key}" data-lab="${key}"><option value="">Choose…</option>${kind.map(o=>`<option ${v===o?"selected":""}>${o}</option>`).join("")}</select>`;
-  return `<div class="ans"><label for="${key}" style="margin:0">${label}</label>${inp}<span class="st">${st===true?'<span class="ok">✓</span>':st===false?'<span class="bad">✗</span>':""} ${unit}</span></div>`;
+  return `<div class="ans"><label for="${key}" style="margin:0">${label}</label>${inp}<span class="st">${st===true?'<span class="ok" aria-hidden="true">✓</span><span class="sr-only">correct</span>':st===false?'<span class="bad" aria-hidden="true">✗</span><span class="sr-only">not yet correct</span>':""} ${unit}</span></div>`;
 }
 function vLab(){
   const p=P();
   return `<div class="card"><h2>Lab bench</h2><p>Dr. Nair said "put numbers on it." Two problems test whether the steel could have carried its load once the fire heated it. Your numbers are unique to you. You get unlimited attempts, and the checker gives targeted hints for common mistakes. Answers within 2% count as correct.</p>
-  <p><b>Work each problem by hand first</b> (Given, Find, Solution, with your diagrams). After you get a problem right, you'll upload photos or a scan of your handwritten work, and it goes into the PDF report you submit.</p>
+  <p><b>Work each problem out first</b> (Given, Find, Solution, with your diagrams), on paper or on a tablet. After you get a problem right, you'll upload photos, a scan, or a screenshot of your work, and it goes into the PDF report you submit.</p>
   <p class="note">These are simplified classroom models with classroom values, not the real bridge's dimensions.</p></div>
 
   <div class="card"><h3 style="margin-top:0">Problem 1: Bending in a fire-heated girder</h3>
@@ -531,8 +573,8 @@ function vLab(){
   ${labRow("pF1","4. Factor of safety against yield at room temperature","")}
   ${labRow("pK",`5. k<sub>y</sub> at ${p.T}°C`,"")}
   ${labRow("pF2",`6. Factor of safety against yield at ${p.T}°C`,"")}
-  <p><button class="btn" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
-  ${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
+  <p><button class="btn" id="chkA" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
+  <div aria-live="polite">${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}</div>
   ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>${uploadHTML("a")}`:""}
   </div>
 
@@ -543,7 +585,7 @@ function vLab(){
   <p>Use Mohr's circle with <b>τ plotted positive downward</b>. Plot the x-face at (σ<sub>x</sub>, τ<sub>xy</sub>) and the y-face at (σ<sub>y</sub>, −τ<sub>xy</sub>). Give θ<sub>p1</sub>, the angle from the x-axis to the σ<sub>1</sub> direction on the element, as a magnitude and a direction.</p></div></div>
   ${labRow("mC","1. Center, σ<sub>avg</sub>","ksi")}
   ${labRow("mR","2. Radius, R","ksi")}
-  <div id="mohr" style="margin:8px 0"></div><div id="mohrmsg" class="msg"></div>
+  <div id="mohr" style="margin:8px 0"></div><div id="mohrmsg" class="msg" aria-live="polite"></div>
   ${labRow("m1","3. Principal stress σ<sub>1</sub>","ksi")}
   ${labRow("m2","4. Principal stress σ<sub>2</sub>","ksi")}
   ${labRow("mT","5. θ<sub>p1</sub>, magnitude","°")}
@@ -551,8 +593,8 @@ function vLab(){
   ${labRow("mX","7. Maximum in-plane shear stress, τ<sub>max</sub>","ksi")}
   ${labRow("mY",`8. Yield strength at ${p.T}°C, k<sub>y</sub>·F<sub>y</sub>`,"ksi")}
   ${labRow("mQ","9. By this simple check (σ<sub>1</sub> vs. k<sub>y</sub>·F<sub>y</sub>), does the web yield?","",["Yes","No"])}
-  <p><button class="btn" onclick="checkLab('b')">Check Problem 2</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
-  ${(S.lab.bfb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
+  <p><button class="btn" id="chkB" onclick="checkLab('b')">Check Problem 2</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
+  <div aria-live="polite">${(S.lab.bfb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}</div>
   ${S.labDone.b?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: real yield criteria (Tresca, von Mises) use both principal stresses, so this check is a first look. What does it tell you about how much margin the fire took away?</p>${uploadHTML("b")}`:""}
   </div>${next()}`;
 }
@@ -603,7 +645,7 @@ function vRCA(){
   <div class="fish">${CATS.map(c=>`<div><b>${c}</b>${S.hyp.filter(h=>okHyp(h)&&h.c===c).map(h=>`<div class="${h.s==="Ruled out"?"x":""}">• ${esc(h.t)}</div>`).join("")||'<span class="note">(none yet)</span>'}</div>`).join("")}</div></div>
   <div class="card"><h3 style="margin-top:0">Step 2: 5 Whys</h3><p>Start at the collapse and keep asking "why?" Your chain should pass through the physics and keep going until you reach a decision that a person, company, or rule-maker could have made differently.</p>
   <p><b>Problem:</b> The northbound I-95 overpass collapsed.</p>
-  ${S.why.map((w,i)=>`<div class="why"><b>Why ${i+1}?</b><input type="text" data-why="${i}" value="${esc(w)}" placeholder="${i===0?"Because…":"And that happened because…"}"></div>`).join("")}
+  ${S.why.map((w,i)=>`<div class="why"><label for="why${i}" style="margin:0">Why ${i+1}?</label><input type="text" id="why${i}" data-why="${i}" value="${esc(w)}" placeholder="${i===0?"Because…":"And that happened because…"}"></div>`).join("")}
   ${coachHTML("whys")}</div>
   <div class="card"><h3 style="margin-top:0">Step 3: Moments of choice</h3><p>Virtues aren't labels you stick on people afterward. They show up at moments of choice, when the right action is <i>hard</i>: you're tired, there's a schedule, a check feels routine, or protection costs money. Pick three ⚖ moments from your evidence. Include at least one where a virtue was shown and one where it was missing.</p></div>
   ${S.mc.map((r,i)=>`<div class="rc mc"><h3>Moment ${i+1}</h3>
@@ -619,9 +661,9 @@ function vRCA(){
   ${S.top.map((r,i)=>`<div class="rc"><h3>Root cause ${i+1}</h3>
     <div class="row"><div><label>From your list</label><select data-t="${i}" data-f="h"><option value="">Choose…</option>${live.map(h=>`<option value="${h.id}" ${r.h===h.id?"selected":""}>${esc(h.t)} (${esc(h.c)})</option>`).join("")}</select></div>
     <div><label>Type</label><select data-t="${i}" data-f="type"><option value="">Choose…</option>${TYPES.map(o=>`<option ${r.type===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
-    <label>Evidence (click to link)</label><div>${Object.entries(cards).map(([k,c])=>evHTML(k,c,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
+    <label>Evidence (click or press Enter to link; click again to unlink)</label><div role="group" aria-label="Evidence for root cause ${i+1}">${Object.entries(cards).map(([k,c])=>evHTML(k,c,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
     <label>Prevention: what specific change would break this link? Who would make it?</label><textarea data-t="${i}" data-f="fix">${esc(r.fix)}</textarea></div>`).join("")}
-  <div class="card" id="err">${errHTML()}</div>${next()}`;
+  <div class="card" id="err" aria-live="polite">${errHTML()}</div>${next()}`;
 }
 function reqHTML(){
   const cat=r=>{const h=hypById(r.h);return h?h.c:"";};
@@ -715,7 +757,7 @@ async function handleUpload(part,list){
 }
 function uploadHTML(part){
   const mine=FILES.filter(f=>f.prob===part);const um=S._upmsg&&S._upmsg.part===part?S._upmsg.msgs:[];
-  return `<div class="chat"><h4>Upload your handwritten work for ${PROB[part]}</h4>
+  return `<div class="chat"><h4>Upload your work for ${PROB[part]}</h4>
   <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your free-body diagram and V and M diagrams"}. Upload every page. These go into the PDF you submit.</p>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">${mine.map(f=>`<div style="border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;text-align:center;font-size:.75rem;max-width:130px">${f.type==="jpg"?`<img src="${f.data}" alt="${esc(f.name)}" style="height:90px;display:block;margin:0 auto 2px">`:`<div style="font-size:2rem">📄</div>`}${esc(f.name.slice(0,22))}<br><button class="btn alt sm" data-rm="${f.id}">Remove</button></div>`).join("")}</div>
   ${mine.length?`<p class="ok msg" style="margin:0">✓ ${mine.length} file${mine.length>1?"s":""} uploaded. Add more pages if needed.</p>`:`<p class="bad msg" style="margin:0">Required before you can continue.</p>`}
@@ -737,14 +779,27 @@ const helpLink=()=>HELP_URL?`<a href="${HELP_URL}" target="_blank" rel="noopener
 const footer=()=>`<details class="card noprint" style="margin-top:28px"><summary style="cursor:pointer;font-weight:700;color:var(--maroon)">Stuck? Quick fixes</summary>
   <dl style="margin:8px 0 0">
    <dt><b>My work disappeared.</b></dt><dd>Open the game on the same device and browser you used before, not in a private window. If you made a backup, use <b>Restore from a backup</b> below.</dd>
-   <dt><b>My photo won't upload.</b></dt><dd>Use JPG, PNG, or PDF, 15 MB or less. iPhone HEIC photos may not work on Windows. Scan to PDF with your phone instead.</dd>
+   <dt><b>My photo won't upload.</b></dt><dd>Use JPG, PNG, or PDF, 15 MB or less. Typed or tablet work is fine too: take a screenshot or save it as a PDF. iPhone HEIC photos may not work on Windows. Scan to PDF with your phone instead.</dd>
    <dt><b>My answer is marked wrong, but I'm sure it's right.</b></dt><dd>Read the hint under the Check button. Check your units (kip·ft vs. kip·in) and signs, and keep 3–4 significant figures rather than rounding early. Answers within 2% count.</dd>
    <dt><b>A character or the coach isn't answering.</b></dt><dd>If the AI is down, that step becomes optional automatically. Keep going.</dd>
    <dt><b>The video won't play.</b></dt><dd>Use the YouTube link under the video.</dd>
    <dt><b>The PDF won't download.</b></dt><dd>Check your Downloads folder, and try Chrome. If it still fails, use <b>Copy report text</b>, paste it into the Canvas assignment, and upload your photos there. You won't lose points for a technical problem.</dd>
+   <dt><b>What does that word mean?</b></dt><dd><dl class="gloss">
+    <dt>NTSB</dt><dd>National Transportation Safety Board, the federal agency that investigates transportation accidents.</dd>
+    <dt>Advisory speed</dt><dd>The recommended safe speed posted for a curve or ramp.</dd>
+    <dt>ESC (electronic stability control)</dt><dd>A system that automatically brakes a truck when it starts to skid or tip.</dd>
+    <dt>Manhole cover (on a tank)</dt><dd>A hatch on top of a tank trailer used for loading and inspection.</dd>
+    <dt>Deck, girder</dt><dd>The deck is the road surface. Girders are the steel beams underneath that hold it up.</dd>
+    <dt>Factor of safety (FS)</dt><dd>Strength divided by the stress the part actually carries. Below 1 means it fails.</dd>
+    <dt>k<sub>y</sub></dt><dd>The fraction of steel's room-temperature yield strength left at a high temperature.</dd>
+    <dt>Principal stresses</dt><dd>The largest and smallest normal stresses at a point, found with Mohr's circle.</dd>
+    <dt>Root cause</dt><dd>A cause that, if fixed, would prevent the problem from happening again.</dd>
+    <dt>Fishbone, 5 Whys</dt><dd>Tools for sorting causes into categories, and for tracing a chain of causes by repeatedly asking "why?"</dd>
+    <dt>Virtue</dt><dd>A habit of character, like diligence or honesty, that helps a person act well, especially when it's hard.</dd>
+   </dl></dd>
    <dt><b>Still stuck?</b></dt><dd>Post in the ${helpLink()}. Others may have the same question.</dd>
   </dl></details>
-  <div class="card noprint note">💾 <b>Your work saves automatically in this browser.</b> Switching devices? <button class="btn alt sm" onclick="backup()">Download a backup</button> <label class="btn alt sm" style="display:inline-block;padding:4px 10px">Restore from a backup<input type="file" accept=".json,application/json" style="display:none" onchange="restore(this.files[0])"></label></div>`;
+  <div class="card noprint note"><span aria-hidden="true">💾 </span><b>Your work saves automatically in this browser.</b> Switching devices? <button class="btn alt sm" onclick="backup()">Download a backup</button> <label class="btn alt sm" style="display:inline-block;padding:4px 10px">Restore from a backup<input type="file" accept=".json,application/json" style="display:none" onchange="restore(this.files[0])"></label></div>`;
 
 /* --- PDF --- */
 async function loadPdfLib(){
@@ -815,7 +870,7 @@ function wire(){
   on("[data-t]",el=>{S.top[+el.dataset.t][el.dataset.f]=el.value;save();refresh();});
   m.querySelectorAll(".rc .chip").forEach(el=>el.addEventListener("click",()=>{
     const rcs=[...m.querySelectorAll(".rc:not(.mc)")];const i=rcs.indexOf(el.closest(".rc"));const a=S.top[i].cards;const id=el.dataset.id;
-    const j=a.indexOf(id);if(j>=0)a.splice(j,1);else a.push(id);el.classList.toggle("sel");save();refresh();}));
+    const j=a.indexOf(id);if(j>=0)a.splice(j,1);else a.push(id);el.classList.toggle("sel");el.setAttribute("aria-pressed",el.classList.contains("sel"));save();refresh();}));
   on("[data-r]",el=>{S[el.dataset.r]=el.value;save();document.getElementById(el.dataset.r+"c").textContent=words(el.value)+" words";refresh();});
 }
 
