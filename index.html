@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root{--maroon:#8C1D40;--gold:#FFC627;--ink:#191919;--muted:#5c5c5c;--line:#d9d9d9;--bg:#fafafa;--ok:#2e7d32;--bad:#b00020}
+  :root{--maroon:#8C1D40;--gold:#FFC627;--ink:#191919;--muted:#5c5c5c;--line:#d9d9d9;--bg:#fafafa;--ok:#2e7d32;--bad:#b00020;--blue:#1565c0;--teal:#00695c}
   *{box-sizing:border-box}
   body{margin:0;font-family:Roboto,system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
   header{background:var(--maroon);color:#fff;padding:14px 20px;border-bottom:5px solid var(--gold)}
@@ -19,7 +19,7 @@
   nav button.done::after{content:" ✓";color:var(--ok)}
   nav button.on.done::after{color:var(--gold)}
   nav button:disabled{opacity:.4;cursor:not-allowed}
-  main{max-width:940px;margin:0 auto;padding:20px}
+  main{max-width:960px;margin:0 auto;padding:20px}
   h2{color:var(--maroon);margin-top:0}
   h3{color:var(--maroon)}
   .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
@@ -28,7 +28,7 @@
   .btn.sm{padding:4px 10px;font-size:.85rem}
   .btn:disabled{opacity:.45;cursor:not-allowed}
   input[type=text],input[type=number],select,textarea{font:inherit;padding:7px 9px;border:1px solid #bbb;border-radius:6px;width:100%;background:#fff}
-  textarea{min-height:80px}
+  textarea{min-height:70px}
   label{font-weight:500;display:block;margin:8px 0 4px}
   .note{font-size:.85rem;color:var(--muted)}
   .msg{font-weight:500;margin-top:6px}
@@ -38,8 +38,6 @@
   .hyp{display:grid;grid-template-columns:1fr 190px auto;gap:8px;align-items:center;margin:6px 0}
   .hyp.st{grid-template-columns:1fr 170px 170px auto}
   @media(max-width:700px){.hyp,.hyp.st{grid-template-columns:1fr}}
-  .tag{font-size:.75rem;padding:2px 8px;border-radius:10px;background:#f4eef0;color:var(--maroon);white-space:nowrap}
-  .tag.int{background:#fffbea;color:#7a5b00}
   .ro{padding:7px 9px;border:1px dashed #ccc;border-radius:6px;background:#f7f7f7}
   .people{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
   .person{text-align:left;border:1px solid var(--line);background:#fff;border-radius:10px;padding:12px;cursor:pointer;font:inherit}
@@ -48,29 +46,38 @@
   .q{display:block;width:100%;text-align:left;margin:6px 0;background:#f4eef0;border:1px solid #e3d3d9;border-radius:8px;padding:8px 10px;font:inherit;cursor:pointer}
   .q.asked{background:#fff;color:var(--muted)}
   .say{border-left:4px solid var(--gold);background:#fffbea;padding:8px 12px;margin:8px 0;border-radius:0 8px 8px 0}
-  .ev{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;margin:4px;font-size:.88rem;max-width:100%}
+  .ev{display:inline-block;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;margin:4px;font-size:.88rem;max-width:100%;vertical-align:top}
   .ev .id{font-weight:700;color:var(--maroon);margin-right:4px}
+  .ev .who{display:block;font-size:.75rem;font-weight:700;color:var(--teal);text-transform:uppercase;letter-spacing:.03em}
   .ev.calc{border-color:var(--gold);background:#fffbea}
+  .ev.choice{border-color:var(--teal);border-left:5px solid var(--teal);background:#f1f8f7}
+  .ev.human{border-left:5px solid #7b5ea7}
   .chip{cursor:pointer;user-select:none}
   .chip.sel{background:var(--maroon);color:#fff;border-color:var(--maroon)}
-  .chip.sel .id{color:var(--gold)}
+  .chip.sel .id,.chip.sel .who{color:var(--gold)}
+  .legend span{display:inline-block;margin-right:14px;font-size:.85rem}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
   table{border-collapse:collapse;margin:8px 0}
   td,th{border:1px solid var(--line);padding:4px 10px;text-align:center}
   th{background:#f4eef0}
   .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-  @media(max-width:640px){.row{grid-template-columns:1fr}}
-  .ans{display:grid;grid-template-columns:1fr 160px 70px;gap:8px;align-items:center;margin:6px 0}
+  @media(max-width:700px){.row{grid-template-columns:1fr}}
+  .ans{display:grid;grid-template-columns:1fr 150px 70px;gap:8px;align-items:center;margin:6px 0}
   .ans .st{font-size:1.05rem}
+  .fb{background:#fdecee;border-left:4px solid var(--bad);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0;font-size:.92rem}
   .rc{border:2px solid #e3d3d9;border-radius:10px;padding:12px;margin-bottom:12px;background:#fff}
+  .rc.mc{border-color:#b7d8d3}
   .rc h3{margin:0 0 6px;font-size:1rem}
   .fish{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px}
-  .fish div{border:1px solid var(--line);border-top:4px solid var(--maroon);border-radius:6px;padding:8px;background:#fff;font-size:.88rem}
+  .fish>div{border:1px solid var(--line);border-top:4px solid var(--maroon);border-radius:6px;padding:8px;background:#fff;font-size:.88rem}
   .fish b{display:block;color:var(--maroon);margin-bottom:4px}
   .fish .x{text-decoration:line-through;color:#999}
   .why{display:grid;grid-template-columns:70px 1fr;gap:8px;align-items:center;margin:6px 0}
+  .fig{width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px}
+  .figrow{display:grid;grid-template-columns:260px 1fr;gap:14px;align-items:start}
+  @media(max-width:700px){.figrow{grid-template-columns:1fr}}
   .code{font-family:ui-monospace,Menlo,monospace;font-size:1.4rem;letter-spacing:2px;background:var(--maroon);color:var(--gold);padding:6px 14px;border-radius:8px;display:inline-block}
   #report pre{white-space:pre-wrap;font-family:inherit}
-  .hidden{display:none}
   @media print{header,nav,.noprint{display:none!important}body{background:#fff}.card{border:0}}
 </style>
 </head>
@@ -89,72 +96,80 @@ const VIDEO_ID="iKNw1mnA5M0";
 const CATS=["People","Vehicle & equipment","Rules & organizations","Structure & materials","Environment & site"];
 const STATUS=["Supported","Revised","Ruled out","Not enough evidence"];
 const TYPES=["Direct cause","Contributing factor","Systemic root cause"];
-const VIRTUES=["Attentiveness","Prudence (practical wisdom)","Responsibility","Integrity","Diligence","Humility","Courage","Foresight","Care for others","Honesty"];
+const VIRTUES=["Attentiveness","Prudence (practical wisdom)","Responsibility","Integrity","Diligence","Humility","Courage","Foresight","Care for others","Honesty","Justice (fairness to those who bear the risk)"];
+const JUDGE=["Virtue shown","Virtue missing","Mixed"];
 
+/* k: tech | human | choice. Choice cards are "moments of choice": a decision someone made under real pressures. */
 const CARDS={
- E1:"The truck entered the curved exit ramp at about 44–54 mph. The ramp's advisory speed was 25 mph, with a truck rollover warning sign.",
- E2:"Tire marks on the ramp showed the rollover was caused by the high speed at which the truck entered the curve.",
- E3:"The NTSB's probable cause: the driver failed to slow down, likely from inattention possibly linked to fatigue. Phone records ruled out phone use.",
- E4:"The 2017 truck had no electronic stability control (ESC). It predated the 2019 federal requirement, and simulations showed ESC would have prevented this rollover.",
- E5:"The driver worked overnight shifts (10 p.m.–8 a.m.) and switched to a daytime schedule on days off; he had about 5.5 hours of sleep opportunity the day before.",
- E6:"The tank's front manhole cover was open at all three stops that shift. Federal rules require it to be closed and secured in transport.",
- E7:"Company policy required drivers to check manhole covers before each trip, and the driver had signed it. After the crash, the company moved to an electronic checklist.",
- E8:"When the trailer rolled, gasoline escaped through the open manhole and spread fire across the ramp and the underpass.",
- E9:"Burning gasoline entered the storm drains. Explosions over several hours blew drain covers off along the path to the Delaware River, about 800 ft away.",
- E10:"The truck came to rest and burned directly underneath the northbound I-95 overpass.",
- E11:"The overpass was a concrete deck on steel girders. A fire on top is shielded by the concrete; a fire underneath heats the steel directly.",
- E12:"Drivers' videos showed the road deck sagging badly during the fire, minutes before it collapsed.",
- E13:"Like most highway bridges, this one wasn't designed to withstand an extreme fire underneath it.",
- E14:"The southbound span next door was also damaged by the heat and judged unsafe after inspection."
+ T1:{k:"tech",t:"Tire marks on the ramp showed the truck rolled over because of the speed it carried into the curve."},
+ T2:{k:"tech",t:"Phone records showed no call or text at the time of the crash, ruling out phone distraction. The NTSB's probable cause: the driver failed to slow down, likely from inattention possibly linked to fatigue."},
+ T3:{k:"tech",t:"When the trailer rolled, gasoline escaped through the open manhole and spread fire across the ramp and the underpass."},
+ T4:{k:"tech",t:"Burning gasoline flowed into the storm drains. Explosions over several hours blew drain covers off along the path to the Delaware River, about 800 ft away."},
+ T5:{k:"tech",t:"The truck came to rest and burned directly beneath the northbound I-95 overpass."},
+ T6:{k:"tech",t:"The overpass was a concrete deck on steel girders. A fire on top is shielded by the concrete; a fire underneath heats the steel directly."},
+ T7:{k:"tech",t:"Drivers' videos showed the deck sagging badly during the fire, minutes before it collapsed."},
+ H1:{k:"human",t:"The driver was killed. About 160,000 vehicles a day lost their route until temporary lanes opened 12 days later."},
+ H2:{k:"human",t:"The carrier had passed eight federal compliance reviews, none rated unsatisfactory, and the driver had signed its speed and manhole-cover policies. On paper, oversight looked fine."},
+ M1:{k:"choice",who:"The driver",t:"Entered the curved ramp at about 44–54 mph. The advisory speed was 25 mph, and a truck rollover warning sign stood before the curve."},
+ M2:{k:"choice",who:"The driver",t:"Drove with the tank's front manhole cover open through all three stops that shift. The pre-trip inspection was supposed to catch it, and federal rules require it closed in transport."},
+ M3:{k:"choice",who:"The driver and the trucking industry",t:"Overnight shifts (10 p.m.–8 a.m.), switching to a daytime schedule on days off; about 5.5 hours of sleep opportunity the day before. The NTSB urges the industry to adopt fatigue-management programs."},
+ M4:{k:"choice",who:"The trucking company",t:"A 2022 policy, written after an earlier leak from an unsecured cover, still relied on the driver's signature to confirm manhole covers. After the crash, the company switched to an electronic checklist that requires confirming each cover."},
+ M5:{k:"choice",who:"Federal regulators",t:"The NTSB recommended stability control for large trucks in 2011. The rule only covers tractors built after August 2019, so this 2017 truck had none, though simulations showed it would have prevented the rollover. The NTSB still rates the response unacceptable."},
+ M6:{k:"choice",who:"Bridge designers and code writers",t:"Like most highway bridges, this one wasn't designed for an extreme fire underneath. Fire protection costs money and such fires are rare; afterward, experts asked whether fire codes should change."},
+ M7:{k:"choice",who:"Firefighters",t:"Shut down their water lines for a time because they couldn't confirm whether the burning storm sewers led toward a water treatment plant."},
+ M8:{k:"choice",who:"Bridge inspectors",t:"Judged the southbound span unsafe even though it was still standing and closing it made the traffic crisis worse. It was demolished."}
 };
 
 const PEOPLE=[
  {id:"ntsb",name:"Morgan Hale",role:"Highway crash investigator",qs:[
-   ["How fast was the truck going?","Our best estimate is somewhere between 44 and 54 mph as it entered the ramp. The advisory speed was 25, and there was a truck rollover warning sign before the curve.","E1"],
-   ["How do you know speed caused the rollover?","The tire marks. A truck that's going too fast for a curve leaves a signature on the pavement, and this one did. The rollover came from the speed it carried into that curve.","E2"],
-   ["Why didn't the driver slow down?","Our probable cause is that he didn't slow down because he wasn't paying attention to the road, and that inattention may have been related to fatigue. We checked his phone records: no calls or texts at the time, so it wasn't the phone.","E3"],
-   ["Could the truck itself have prevented this?","Possibly. Newer truck tractors have electronic stability control, which brakes automatically when the truck starts to tip. This truck was built in 2017, before that was required in 2019. Our simulations say ESC would have prevented this rollover at any speed in that range.","E4"]]},
+   ["How fast was the truck going?","Our best estimate is somewhere between 44 and 54 mph as it entered the ramp. The advisory speed was 25, and there was a truck rollover warning sign before the curve. He'd driven routes like this before.","M1"],
+   ["How do you know speed caused the rollover?","The tire marks. A truck that's going too fast for a curve leaves a signature on the pavement, and this one did.","T1"],
+   ["Why didn't the driver slow down?","We checked his phone: no calls or texts at the time, so it wasn't the phone. Our probable cause is that he didn't slow down because he wasn't paying attention to the road, and that may have been related to fatigue.","T2"],
+   ["Could the truck itself have prevented this?","Possibly. Newer tractors have electronic stability control, which brakes automatically when a truck starts to tip. We recommended it for big trucks back in 2011. The federal rule only covers tractors built after August 2019, and this one was a 2017. Our simulations say it would have prevented this rollover at any speed in that range. We still rate the government's response as unacceptable.","M5"]]},
  {id:"safety",name:"Chris Delgado",role:"Trucking company safety manager",qs:[
-   ["What was the driver's schedule like?","He drove overnight, 10 p.m. to 8 a.m., and switched back to a daytime schedule on his days off. That's hard on anyone's body. The day before the crash he had only about five and a half hours to sleep.","E5"],
-   ["Was anything wrong with the tank?","Yes. The manhole cover on the front compartment of the tank was open. Video shows it open at every stop he made that shift. Federal rules say it has to be closed and secured whenever you're on the road.","E6"],
-   ["Didn't anyone check?","Our policy said drivers check manhole covers in the pre-trip inspection, and he'd signed off on it. After the crash, we moved to an electronic checklist that won't let you finish until you confirm every cover is secured.","E7"]]},
+   ["What was the driver's schedule like?","He drove overnight, 10 p.m. to 8 a.m., and switched back to days on his days off, like a lot of drivers do to see their families. That's hard on anyone's body. The day before the crash he had only about five and a half hours to sleep. The NTSB keeps telling our industry to adopt real fatigue-management programs.","M3"],
+   ["Was anything wrong with the tank?","Yes. The manhole cover on the front compartment was open. Video shows it open at every stop he made that shift. Federal rules say it has to be closed and secured whenever you're on the road.","M2"],
+   ["Didn't anyone check?","Our policy said drivers check every cover before a trip, and he'd signed it. We'd written that policy after an earlier leak from an unsecured cover. But it still came down to one tired person remembering. After the crash, we switched to an electronic checklist that won't let you finish until you confirm each cover.","M4"],
+   ["Didn't regulators check on your company?","They did. We'd been through eight federal compliance reviews, and none came back unsatisfactory. The driver had signed our speed and manhole-cover policies. On paper, everything looked fine.","H2"]]},
  {id:"fire",name:"Captain Rosa Ibáñez",role:"Fire department captain",qs:[
-   ["Why was the fire so intense?","Gasoline came pouring out of that open manhole when the trailer went over, and it spread across the whole ramp and underpass. A closed tank would have been a very different fire.","E8"],
-   ["What was strange about this fire?","The storm drains. Burning gasoline ran into them, and for hours we had explosions underground, popping drain covers off all the way toward the river, about 800 feet away.","E9"],
-   ["Where exactly was the fire?","Right under the northbound overpass. The truck came to rest and burned directly beneath the bridge.","E10"]]},
+   ["Why was the fire so intense?","Gasoline came pouring out of that open manhole when the trailer went over, and it spread across the whole ramp and underpass. A closed tank would have been a very different fire.","T3"],
+   ["What was strange about this fire?","The storm drains. Burning gasoline ran into them, and for hours we had explosions underground, popping drain covers off all the way toward the river, about 800 feet away.","T4"],
+   ["Why did you stop spraying water at one point?","We couldn't confirm whether those burning sewers led toward a water treatment plant. Pushing more water in could have carried fuel somewhere much worse. So we shut our lines down until we knew more. That's a hard call when a highway is burning in front of you.","M7"],
+   ["Where exactly was the fire?","Right under the northbound overpass. The truck came to rest and burned directly beneath the bridge.","T5"]]},
  {id:"eng",name:"Dr. Priya Nair",role:"Structural engineer",qs:[
-   ["Why did a truck fire bring down a highway?","It's about where the fire was. This overpass was a concrete deck on steel girders. If a truck burns on top, the concrete shields the steel. This one burned underneath, so the girders took the heat directly.","E11"],
-   ["Did the steel melt?","It didn't need to. Steel loses a lot of strength and stiffness long before it melts. Look at the drivers' videos: the deck is sagging badly minutes before it falls. You'll put numbers on that at the lab bench.","E12"],
-   ["Shouldn't bridges be designed for fire?","Most highway bridges aren't designed for an extreme fire underneath them. Fire protection costs money, and this kind of fire is rare. Whether that tradeoff still makes sense is a fair question for engineers.","E13"],
-   ["What happened to the southbound side?","It didn't fall, but the heat damaged it too. After inspection it was judged unsafe and had to come down.","E14"]]}
+   ["Why did a truck fire bring down a highway?","It's about where the fire was. This overpass was a concrete deck on steel girders. If a truck burns on top, the concrete shields the steel. This one burned underneath, so the girders took the heat directly.","T6"],
+   ["Did the steel melt?","It didn't need to. Steel loses a lot of strength long before it melts. Look at the drivers' videos: the deck is sagging badly minutes before it falls. You'll put numbers on that at the lab bench.","T7"],
+   ["Shouldn't bridges be designed for fire?","Most highway bridges aren't designed for an extreme fire underneath them. Fire protection costs money, and these fires are rare. Afterward, some experts asked whether codes should change. That's a tradeoff between cost and risk, and between the people who pay and the people who bear the risk.","M6"],
+   ["What happened to the southbound side?","It was still standing, and closing it made a terrible traffic situation worse. But after inspection, the engineers judged it unsafe and took it down. Standing isn't the same as safe.","M8"]]}
 ];
 
-/* Eurocode-style reduction factors for carbon steel at elevated temperature */
+/* Eurocode-style effective yield strength reduction for carbon steel */
 const KY={20:1.00,400:1.00,500:0.78,600:0.47,700:0.23,800:0.11};
-const KE={20:1.00,400:0.70,500:0.60,600:0.31,700:0.13,800:0.09};
 function interp(tab,T){const ks=Object.keys(tab).map(Number).sort((a,b)=>a-b);for(let i=0;i<ks.length-1;i++){if(T>=ks[i]&&T<=ks[i+1]){const f=(T-ks[i])/(ks[i+1]-ks[i]);return tab[ks[i]]+f*(tab[ks[i+1]]-tab[ks[i]]);}}return tab[800];}
 
 /* ================= SEEDED PARAMETERS ================= */
-const G=32.2, TRACK=6.0, VREF=49;
 function norm(n){return (n||"").trim().toLowerCase().replace(/\s+/g," ");}
 function fnv(str){let h=0x811c9dc5;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0;}return h>>>0;}
 function rng(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 function params(name){
-  const r=rng(fnv("i95c|"+norm(name)));
-  const R=120+10*Math.floor(r()*9);                         // ft
-  const h=Math.round((6.5+0.1*Math.floor(r()*11))*10)/10;    // ft
+  const r=rng(fnv("i95d|"+norm(name)));
   const L=60+2*Math.floor(r()*11);                           // ft
   const w=Math.round((2.0+0.1*Math.floor(r()*11))*10)/10;    // kip/ft
-  const M=w*L*L/8;
-  const S=Math.round(M*12/(24+r()*6)/10)*10;                 // in^3
+  const d=[24,27,30,33,36][Math.floor(r()*5)];               // in
+  const c=d/2;
+  const M=w*L*L/8;                                           // kip-ft
+  const I=Math.round(M*12*c/(24+r()*6)/100)*100;             // in^4
   const T=[600,650,700][Math.floor(r()*3)];
-  const srt=TRACK/(2*h), vfps=Math.sqrt(G*R*srt), vmph=vfps*3600/5280;
-  const v49=VREF*5280/3600, a49=v49*v49/(G*R);
-  const sig=M*12/S, FS20=50/sig, FST=50*interp(KY,T)/sig, sag=1/interp(KE,T);
-  return {R,h,L,w,S,T,srt,vmph,a49,M,sig,FS20,FST,sag};
+  const sx=12+Math.floor(r()*9);                             // ksi
+  const sy=-(2+Math.floor(r()*5));                           // ksi
+  const tau=(r()<0.5?-1:1)*(4+Math.floor(r()*6));            // ksi
+  const RA=w*L/2, sig=M*12*c/I, FS20=50/sig, ky=interp(KY,T), FST=50*ky/sig, Fyh=50*ky;
+  const avg=(sx+sy)/2, Rm=Math.hypot((sx-sy)/2,tau), s1=avg+Rm, s2=avg-Rm;
+  const th=0.5*Math.atan2(tau,(sx-sy)/2)*180/Math.PI;        // + = CCW (Hibbeler)
+  return {L,w,d,c,I,T,M,RA,sig,FS20,ky,FST,Fyh,sx,sy,tau,avg,Rm,s1,s2,th,thMag:Math.abs(th),thDir:th>0?"Counterclockwise":"Clockwise",yields:s1>Fyh?"Yes":"No"};
 }
 function code(name){
-  const p=params(name);const h=fnv("I95c1|"+norm(name)+"|"+p.R+p.h+p.L+p.w+p.S+p.T);
+  const p=params(name);const h=fnv("I95d1|"+norm(name)+"|"+p.L+p.w+p.I+p.T+p.sx+p.sy+p.tau);
   const h2=fnv(String(h)+"|kellam");
   const A="ABCDEFGHJKLMNPQRSTUVWXYZ23456789";let s="",x=h,y=h2;
   for(let i=0;i<4;i++){s+=A[x%32];x=Math.floor(x/32);}s+="-";
@@ -162,17 +177,24 @@ function code(name){
 }
 
 /* ================= STATE ================= */
-const KEY="egr343-i95-collapse-v1";
-const blankTop=()=>({h:"",cards:[],type:"",virtue:"",fix:""});
-let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},
-  why:["","","","",""],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:""};
-try{const s=localStorage.getItem(KEY);if(s)S=Object.assign(S,JSON.parse(s));}catch(e){}
+const KEY="egr343-i95-collapse-v2", OLDKEY="egr343-i95-collapse-v1";
+const blankTop=()=>({h:"",cards:[],type:"",fix:""});
+const blankMC=()=>({m:"",judge:"",virtue:"",hard:"",wise:""});
+let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},unitSlips:0,
+  why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:""};
+try{
+  const s=localStorage.getItem(KEY);
+  if(s)S=Object.assign(S,JSON.parse(s));
+  else{const o=localStorage.getItem(OLDKEY);if(o){const old=JSON.parse(o);["name","hyp","nextId","locked","asked","why","r1","r2"].forEach(k=>{if(old[k]!==undefined)S[k]=old[k];});if(S.locked)S.stage="interviews";}}
+}catch(e){}
 if(!S.hyp.length){addHyp("video");addHyp("video");addHyp("video");addHyp("video");}
+S.cards=[];if(Object.keys(S.asked).length||S.locked)give("H1");
+PEOPLE.forEach(p=>p.qs.forEach((q,i)=>{if(S.asked[p.id+i])give(q[2]);}));
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 function addHyp(src){S.hyp.push({id:"h"+(S.nextId++),t:"",c:"",s:"",src});}
 function P(){return params(S.name);}
 function has(c){return S.cards.includes(c);}
-function give(c){if(!has(c))S.cards.push(c);}
+function give(c){if(!S.cards.includes(c))S.cards.push(c);}
 function words(t){return (t||"").trim().split(/\s+/).filter(Boolean).length;}
 const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 function fmt(x,d=3){return Number(Number(x).toPrecision(d)).toLocaleString("en-US",{maximumFractionDigits:3});}
@@ -197,31 +219,44 @@ function done(st){
 function unlocked(st){const i=STAGES.findIndex(s=>s[0]===st);for(let j=0;j<i;j++){if(!done(STAGES[j][0]))return false;}return true;}
 function calcCards(){
   const p=P(),c={};
-  if(S.labDone.a)c.C1=`Your lab: on a ${p.R} ft radius curve, this loaded tanker tips at about ${fmt(p.vmph)} mph. At ${VREF} mph it would need ${fmt(p.a49)} g of sideways grip, but it tips at ${fmt(p.srt)} g.`;
-  if(S.labDone.b)c.C2=`Your lab: at ${p.T}°C the girder's factor of safety drops from ${fmt(p.FS20)} to ${fmt(p.FST)}, and it sags about ${fmt(p.sag)} times as much.`;
+  if(S.labDone.a)c.C1={k:"calc",t:`Your lab: the girder's factor of safety against yield drops from ${fmt(p.FS20)} at room temperature to ${fmt(p.FST)} at ${p.T}°C.`};
+  if(S.labDone.b)c.C2={k:"calc",t:`Your lab: in the girder web near the support, σ₁ = ${fmt(p.s1)} ksi. At ${p.T}°C the steel's yield strength is only ${fmt(p.Fyh)} ksi, so by this simple check the web ${p.yields==="Yes"?"yields":"does not yet yield"}.`};
   return c;
 }
 function allCards(){return Object.assign({},Object.fromEntries(S.cards.map(k=>[k,CARDS[k]])),calcCards());}
 const liveHyps=()=>S.hyp.filter(h=>okHyp(h)&&h.s!=="Ruled out");
+const choiceIds=()=>S.cards.filter(k=>CARDS[k].k==="choice");
 function rcaErrors(){
   const e=[];
   S.why.forEach((w,i)=>{if(words(w)<4)e.push(`5 Whys: answer why #${i+1} (at least 4 words).`);});
+  S.mc.forEach((r,i)=>{const n=i+1;
+    if(!r.m)e.push(`Moment of choice ${n}: choose a moment.`);
+    if(!r.judge)e.push(`Moment of choice ${n}: judge it.`);
+    if(!r.virtue)e.push(`Moment of choice ${n}: name the virtue.`);
+    if(words(r.hard)<12)e.push(`Moment of choice ${n}: explain what made the right action hard (12+ words, ${words(r.hard)} so far).`);
+    if(words(r.wise)<12)e.push(`Moment of choice ${n}: describe practical wisdom or a system change (12+ words, ${words(r.wise)} so far).`);});
+  const ms=S.mc.map(r=>r.m).filter(Boolean);
+  if(new Set(ms).size<ms.length)e.push("Choose three different moments of choice.");
+  if(!S.mc.some(r=>r.judge==="Virtue shown"))e.push("At least one moment should be one where a virtue was shown. Investigations learn from what went right, too.");
+  if(!S.mc.some(r=>r.judge==="Virtue missing"))e.push("At least one moment should be one where a virtue was missing.");
   S.top.forEach((r,i)=>{const n=i+1;
     if(!r.h||!hypById(r.h))e.push(`Root cause ${n}: choose one from your list.`);
     if(r.cards.length<2)e.push(`Root cause ${n}: link at least 2 evidence cards.`);
     if(!r.type)e.push(`Root cause ${n}: classify it.`);
-    if(!r.virtue)e.push(`Root cause ${n}: choose a virtue.`);
     if(words(r.fix)<12)e.push(`Root cause ${n}: propose a prevention in at least 12 words (${words(r.fix)} so far).`);});
   const hs=S.top.map(r=>r.h).filter(Boolean);
   if(new Set(hs).size<hs.length)e.push("Your three root causes must be different.");
+  const cat=r=>{const h=hypById(r.h);return h?h.c:"";};
   if(!S.top.some(r=>r.cards.some(c=>c[0]==="C")))e.push("At least one root cause must be backed by your own lab result (C1 or C2).");
-  if(!S.top.some(r=>{const h=hypById(r.h);return h&&h.c==="Structure & materials";}))e.push("At least one root cause must be in the Structure & materials category. This is a materials class, after all.");
+  if(!S.top.some(r=>cat(r)==="Structure & materials"))e.push("At least one root cause must be in Structure & materials.");
+  if(!S.top.some(r=>cat(r)==="People"||cat(r)==="Rules & organizations"))e.push("At least one root cause must be in People or Rules & organizations. Collapses are never only technical.");
   return e;
 }
 
 /* ================= RENDER ================= */
 function go(st){
   if(S.stage==="video"&&st!=="video"&&done("video")){S.locked=true;S.hyp=S.hyp.filter(h=>h.src!=="video"||okHyp(h));}
+  if(st==="interviews")give("H1");
   if(st==="update"&&!intHyps().length){addHyp("interview");addHyp("interview");}
   S.stage=st;save();render();window.scrollTo(0,0);
 }
@@ -229,14 +264,14 @@ function render(){
   renderNav();
   document.getElementById("main").innerHTML=({video:vVideo,interviews:vInt,update:vUpdate,lab:vLab,rca:vRCA,reflect:vReflect,report:vReport}[S.stage])();
   wire();
+  if(S.stage==="lab")drawMohr();
 }
-function renderNav(){
-  document.getElementById("nav").innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}</button>`).join("");
-}
+function renderNav(){document.getElementById("nav").innerHTML=STAGES.map(([k,l])=>`<button class="${S.stage===k?"on":""} ${done(k)?"done":""}" ${unlocked(k)?"":"disabled"} onclick="go('${k}')">${l}</button>`).join("");}
 function refresh(){renderNav();const b=document.getElementById("nextBtn");if(b)b.disabled=!done(S.stage);const e=document.getElementById("err");if(e&&S.stage==="rca")e.innerHTML=errHTML();}
 function next(){const i=STAGES.findIndex(s=>s[0]===S.stage);const n=STAGES[i+1];return n?`<p><button id="nextBtn" class="btn" ${done(S.stage)?"":"disabled"} onclick="go('${n[0]}')">Continue to ${n[1].replace(/^\d+\.\s/,"")} →</button></p>`:"";}
-function evHTML(id,txt,extra=""){return `<span class="ev ${id[0]==="C"?"calc":""} ${extra}" data-id="${id}"><span class="id">${id}</span>${esc(txt)}</span>`;}
-const catSel=(h,dis)=>`<select data-h="${h.id}" data-f="c" ${dis?"disabled":""}><option value="">Category…</option>${CATS.map(c=>`<option ${h.c===c?"selected":""}>${c}</option>`).join("")}</select>`;
+function evHTML(id,c,extra=""){return `<span class="ev ${c.k} ${extra}" data-id="${id}">${c.who?`<span class="who">⚖ ${esc(c.who)}</span>`:""}<span class="id">${id}</span>${esc(c.t)}</span>`;}
+const legend=`<div class="legend note"><span><i style="background:#fff;border:1px solid #ccc"></i>Technical</span><span><i style="background:#7b5ea7"></i>Human & organizational</span><span><i style="background:var(--teal)"></i>⚖ Moment of choice</span><span><i style="background:var(--gold)"></i>Your lab result</span></div>`;
+const catSel=h=>`<select data-h="${h.id}" data-f="c"><option value="">Category…</option>${CATS.map(c=>`<option ${h.c===c?"selected":""}>${c}</option>`).join("")}</select>`;
 
 function vVideo(){
   return `<div class="card"><h2>Watch and make your first guesses</h2>
@@ -256,91 +291,219 @@ function vVideo(){
 
 function vInt(){
   const p=PEOPLE.find(x=>x.id===S.person);
-  return `<div class="card"><h2>Interviews</h2><p>Talk to four people who know what the video couldn't. Ask every question; each answer adds an evidence card. (${Object.keys(S.asked).length} of ${totalQs} asked)</p>
+  return `<div class="card"><h2>Interviews</h2><p>Talk to four people who know what the video couldn't. Ask every question; each answer adds an evidence card. Watch for <b>⚖ moments of choice</b>: points where a person or an organization made a decision under real pressure, sometimes well and sometimes not. (${Object.keys(S.asked).length} of ${totalQs} asked)</p>
   <div class="people">${PEOPLE.map(x=>{const n=x.qs.filter((q,i)=>S.asked[x.id+i]).length;return `<button class="person ${x.id===S.person?"on":""}" onclick="S.person='${x.id}';save();render()"><b>${x.name}</b>${x.role}<br><span class="note">${n}/${x.qs.length} questions</span></button>`}).join("")}</div>
-  <p class="note">The characters are fictional. Their facts come from the NTSB's final report (HIR-25-01, 2025) and from news coverage of the investigation.</p></div>
+  <p class="note">The characters are fictional. Their facts come from the NTSB's final report (HIR-25-01, 2025) and from news coverage of the investigation. The driver, who died in the crash, is not named here. This investigation asks what systems put a person in that situation, not only what he did.</p></div>
   <div class="card"><h3 style="margin-top:0">${p.name}, ${p.role}</h3>
   ${p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" onclick="ask('${p.id}',${i})">${S.asked[k]?"✓ ":"❓ "}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
   </div>
-  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${S.cards.length?S.cards.map(c=>evHTML(c,CARDS[c])).join(""):'<span class="note">Empty so far.</span>'}</div>${next()}`;
+  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
 }
 function ask(pid,i){S.asked[pid+i]=1;give(PEOPLE.find(x=>x.id===pid).qs[i][2]);save();render();}
 
 function vUpdate(){
   return `<div class="card"><h2>Update your list</h2>
-  <p>Now compare your first guesses with the evidence. For each one, decide: was it <b>supported</b>, does it need to be <b>revised</b>, was it <b>ruled out</b>, or is there <b>not enough evidence</b>? Then add the causes the video didn't show you.</p></div>
+  <p>Now compare your first guesses with the evidence. For each one, decide: was it <b>supported</b>, does it need to be <b>revised</b>, was it <b>ruled out</b>, or is there <b>not enough evidence</b>? Then add the causes the video didn't show you. Look especially at the human and organizational evidence.</p></div>
   <div class="card"><h3 style="margin-top:0">From the video</h3>
   ${vidHyps().map(h=>`<div class="hyp st"><div class="ro">${esc(h.t)}</div><div class="ro">${esc(h.c)}</div><select data-h="${h.id}" data-f="s"><option value="">Verdict…</option>${STATUS.map(s=>`<option ${h.s===s?"selected":""}>${s}</option>`).join("")}</select><span></span></div>`).join("")}</div>
   <div class="card"><h3 style="margin-top:0">New from the interviews</h3><p class="note">Add at least 2 causes you didn't think of before.</p>
   ${intHyps().map(h=>`<div class="hyp"><input type="text" data-h="${h.id}" data-f="t" value="${esc(h.t)}" placeholder="A cause the interviews revealed">${catSel(h)}<button class="btn alt sm" data-del="${h.id}">✕</button></div>`).join("")}
   <p><button class="btn alt sm" onclick="addHyp('interview');save();render()">+ Add another</button></p></div>
-  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
+  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
 }
 
-function labRow(key,label,unit){
+/* ---------- Figures ---------- */
+const DEFS=`<defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker></defs>`;
+function beamSVG(p){
+  let arrows="";for(let i=0;i<=10;i++){const x=60+40*i;arrows+=`<line x1="${x}" y1="52" x2="${x}" y2="94" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>`;}
+  let flames="";[200,235,270,305].forEach((x,i)=>{flames+=`<path d="M${x},176 q-12,-18 0,-34 q4,12 10,6 q8,14 -2,28 z" fill="#f57c00" opacity=".75"/>`;});
+  return `<svg class="fig" viewBox="0 0 720 250" role="img" aria-label="Simply supported girder with uniform load w over span L, and I-shaped cross-section showing c and the neutral axis" style="color:#191919">${DEFS}
+  <line x1="60" y1="52" x2="460" y2="52" stroke="currentColor" stroke-width="1.6"/>${arrows}
+  <text x="260" y="40" text-anchor="middle" font-size="16" font-style="italic">w = ${p.w} kip/ft</text>
+  <rect x="60" y="98" width="400" height="18" fill="#9e9e9e" stroke="currentColor"/>
+  <polygon points="60,116 46,142 74,142" fill="#fff" stroke="currentColor" stroke-width="1.5"/><line x1="36" y1="144" x2="84" y2="144" stroke="currentColor" stroke-width="1.5"/>
+  <circle cx="460" cy="129" r="12" fill="#fff" stroke="currentColor" stroke-width="1.5"/><line x1="436" y1="144" x2="484" y2="144" stroke="currentColor" stroke-width="1.5"/>
+  <text x="60" y="166" text-anchor="middle" font-size="15" font-weight="700">A</text><text x="460" y="166" text-anchor="middle" font-size="15" font-weight="700">B</text>
+  ${flames}<text x="262" y="196" text-anchor="middle" font-size="12" fill="#e65100">fire below</text>
+  <line x1="60" y1="222" x2="460" y2="222" stroke="currentColor" stroke-width="1.3" marker-start="url(#ah)" marker-end="url(#ah)"/>
+  <text x="260" y="242" text-anchor="middle" font-size="15" font-style="italic">L = ${p.L} ft</text>
+  <g transform="translate(540,30)">
+   <rect x="0" y="0" width="110" height="14" fill="#bdbdbd" stroke="currentColor"/><rect x="49" y="14" width="12" height="122" fill="#bdbdbd" stroke="currentColor"/><rect x="0" y="136" width="110" height="14" fill="#bdbdbd" stroke="currentColor"/>
+   <line x1="-14" y1="75" x2="124" y2="75" stroke="#1565c0" stroke-width="1.4" stroke-dasharray="6 4"/><text x="-16" y="79" text-anchor="end" font-size="13" fill="#1565c0">N.A.</text>
+   <line x1="140" y1="75" x2="140" y2="0" stroke="currentColor" stroke-width="1.3" marker-start="url(#ah)" marker-end="url(#ah)"/>
+   <text x="146" y="42" font-size="15" font-style="italic">c</text>
+   <text x="55" y="176" text-anchor="middle" font-size="13">Cross-section</text>
+   <text x="55" y="196" text-anchor="middle" font-size="14" font-style="italic">c = ${p.c} in</text>
+   <text x="55" y="214" text-anchor="middle" font-size="14" font-style="italic">I = ${p.I.toLocaleString()} in⁴</text>
+  </g></svg>`;
+}
+function elementSVG(p){
+  const a=(x1,y1,x2,y2,col)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.2" marker-end="url(#ah)" style="color:${col}"/>`;
+  const R="#b00020",B="#1565c0",Gc="#2e7d32";let s="";
+  // sigma_x on right/left faces
+  if(p.sx>0){s+=a(172,130,222,130,R)+a(88,130,38,130,R);}else{s+=a(222,130,174,130,R)+a(38,130,86,130,R);}
+  // sigma_y on top/bottom faces (negative => compression, arrows point in)
+  if(p.sy>0){s+=a(130,88,130,38,B)+a(130,172,130,222,B);}else{s+=a(130,38,130,86,B)+a(130,222,130,174,B);}
+  // tau_xy: + acts +y on +x face, +x on +y face
+  const t=p.tau>0;
+  s+=t?a(180,155,180,105,Gc):a(180,105,180,155,Gc);         // +x face
+  s+=t?a(80,105,80,155,Gc):a(80,155,80,105,Gc);             // -x face
+  s+=t?a(105,80,155,80,Gc):a(155,80,105,80,Gc);             // +y face
+  s+=t?a(155,180,105,180,Gc):a(105,180,155,180,Gc);         // -y face
+  return `<svg class="fig" viewBox="0 0 260 260" role="img" aria-label="Plane stress element with sigma x, sigma y and tau xy">${DEFS}
+   <rect x="90" y="90" width="80" height="80" fill="#f4eef0" stroke="#191919" stroke-width="1.5"/>
+   ${s}
+   <text x="226" y="122" font-size="13" fill="${R}" font-style="italic">σx</text>
+   <text x="138" y="34" font-size="13" fill="${B}" font-style="italic">σy</text>
+   <text x="186" y="94" font-size="13" fill="${Gc}" font-style="italic">τxy</text>
+   <g transform="translate(16,244)"><line x1="0" y1="0" x2="34" y2="0" stroke="#555" stroke-width="1.3" marker-end="url(#ah)" style="color:#555"/><line x1="0" y1="0" x2="0" y2="-34" stroke="#555" stroke-width="1.3" marker-end="url(#ah)" style="color:#555"/><text x="38" y="4" font-size="12">x</text><text x="-4" y="-38" font-size="12">y</text></g>
+  </svg>`;
+}
+function drawMohr(){
+  const el=document.getElementById("mohr");if(!el)return;const p=P();
+  const W=560,H=360,pad=40;
+  const hr=Math.max((p.sx-p.sy)/2,Math.abs(p.tau))*1.45+1;
+  const mid=(p.sx+p.sy)/2;
+  let xmin=Math.min(0,mid-hr),xmax=Math.max(0,mid+hr);
+  const k=Math.min((W-2*pad)/(xmax-xmin),(H-2*pad)/(2*hr));
+  const X=v=>pad+(v-xmin)*k, Y=t=>H/2+t*k;      // tau positive DOWN
+  let s=`<svg class="fig" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mohr's circle plot" style="color:#555">${DEFS}`;
+  s+=`<line x1="${pad-10}" y1="${H/2}" x2="${W-10}" y2="${H/2}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${W-14}" y="${H/2-8}" font-size="15" text-anchor="end" font-style="italic">σ (ksi)</text>`;
+  s+=`<line x1="${X(0)}" y1="14" x2="${X(0)}" y2="${H-8}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${X(0)+8}" y="${H-12}" font-size="15" font-style="italic">τ (+ down)</text>`;
+  // student circle
+  const C=parseFloat(S.lab.mC),R=parseFloat(S.lab.mR);let msg="";
+  const px=[p.sx,p.tau],py=[p.sy,-p.tau];
+  s+=`<line x1="${X(px[0])}" y1="${Y(px[1])}" x2="${X(py[0])}" y2="${Y(py[1])}" stroke="#999" stroke-dasharray="5 4"/>`;
+  if(isFinite(C)&&isFinite(R)&&R>0){
+    s+=`<circle cx="${X(C)}" cy="${Y(0)}" r="${R*k}" fill="none" stroke="#1565c0" stroke-width="2"/><circle cx="${X(C)}" cy="${Y(0)}" r="3.5" fill="#1565c0"/>`;
+    const e1=Math.abs(Math.hypot(px[0]-C,px[1])-R),e2=Math.abs(Math.hypot(py[0]-C,py[1])-R);
+    msg=(e1<0.03*R&&e2<0.03*R)?'<span class="ok">✓ Your circle passes through both the x-face and y-face points.</span>':'<span class="bad">Your circle (blue) misses at least one face point. A correct circle passes through both.</span>';
+  }else msg='<span class="note">Enter your center and radius to draw your circle.</span>';
+  s+=`<circle cx="${X(px[0])}" cy="${Y(px[1])}" r="5" fill="#b00020"/><text x="${X(px[0])+8}" y="${Y(px[1])+(px[1]<0?-8:16)}" font-size="13" fill="#b00020">x-face (${p.sx}, ${p.tau})</text>`;
+  s+=`<circle cx="${X(py[0])}" cy="${Y(py[1])}" r="5" fill="#1565c0"/><text x="${X(py[0])+8}" y="${Y(py[1])+(py[1]<0?-8:16)}" font-size="13" fill="#1565c0">y-face (${p.sy}, ${-p.tau})</text>`;
+  if(S.labDone.b){s+=`<circle cx="${X(p.s1)}" cy="${Y(0)}" r="5" fill="#2e7d32"/><text x="${X(p.s1)}" y="${Y(0)-10}" font-size="13" fill="#2e7d32" text-anchor="middle">σ₁</text><circle cx="${X(p.s2)}" cy="${Y(0)}" r="5" fill="#2e7d32"/><text x="${X(p.s2)}" y="${Y(0)-10}" font-size="13" fill="#2e7d32" text-anchor="middle">σ₂</text>`;}
+  s+=`</svg>`;
+  el.innerHTML=s;document.getElementById("mohrmsg").innerHTML=msg;
+}
+
+/* ---------- Lab ---------- */
+function labRow(key,label,unit,kind="num"){
   const v=S.lab[key]??"";const st=S.lab[key+"_ok"];
-  return `<div class="ans"><label for="${key}" style="margin:0">${label}</label><input id="${key}" type="number" step="any" value="${esc(v)}" data-lab="${key}"><span class="st">${st===true?'<span class="ok">✓</span>':st===false?'<span class="bad">✗</span>':""} ${unit}</span></div>`;
+  const inp=kind==="num"?`<input id="${key}" type="number" step="any" value="${esc(v)}" data-lab="${key}">`:`<select id="${key}" data-lab="${key}"><option value="">Choose…</option>${kind.map(o=>`<option ${v===o?"selected":""}>${o}</option>`).join("")}</select>`;
+  return `<div class="ans"><label for="${key}" style="margin:0">${label}</label>${inp}<span class="st">${st===true?'<span class="ok">✓</span>':st===false?'<span class="bad">✗</span>':""} ${unit}</span></div>`;
 }
 function vLab(){
   const p=P();
-  return `<div class="card"><h2>Lab bench</h2><p>Two links in the chain can be checked with mechanics: the truck tipping over, and the steel giving up. Your numbers are unique to you. You get unlimited attempts, and the report records how many you used. Answers within 2% count as correct.</p>
-  <p class="note">These are simplified classroom models with classroom values, not the real truck or the real bridge.</p></div>
-  <div class="card"><h3 style="margin-top:0">Part A: How fast is too fast?</h3>
-  <p>A truck on a curve of radius <b>R = ${p.R} ft</b> at speed v needs a sideways (centripetal) acceleration of a = v²/R. Model the loaded tanker as a rigid block with track width <b>t = ${TRACK} ft</b> and center of gravity at height <b>h = ${p.h} ft</b>. It starts to tip about its outer tires when the moment from the sideways inertia force (m·a·h) exceeds the moment from its weight (m·g·t/2). Use g = 32.2 ft/s².</p>
-  ${labRow("aT","1. Rollover threshold, a/g = t/(2h)","g")}
-  ${labRow("aV","2. Speed at which this truck tips on this curve","mph")}
-  ${labRow("aA",`3. Sideways acceleration needed at ${VREF} mph (middle of the NTSB's estimate)`,"g")}
-  <p><button class="btn" onclick="checkLab('a')">Check Part A</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
-  ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: a real tanker is worse than a rigid block. The liquid sloshes and the suspension leans, so it tips even sooner. Where does the 25 mph advisory sit compared with your answer?</p>`:""}
-  ${S.lab.amsg?`<div class="msg bad">${esc(S.lab.amsg)}</div>`:""}</div>
-  <div class="card"><h3 style="margin-top:0">Part B: Why did the deck sag and fall?</h3>
-  <p>Model one northbound girder as a <b>simply supported steel beam</b> with span <b>L = ${p.L} ft</b>, carrying a uniform load of <b>w = ${p.w} kip/ft</b>. Its elastic section modulus is <b>S = ${p.S} in³</b>, and the steel's yield strength at room temperature is <b>F<sub>y</sub> = 50 ksi</b>. Assume the fire heated the girder to <b>${p.T}°C</b>.</p>
-  <p>Hot steel keeps only a fraction of its strength (k<sub>y</sub>·F<sub>y</sub>) and stiffness (k<sub>E</sub>·E). Interpolate linearly:</p>
-  <table><tr><th>T (°C)</th>${Object.keys(KY).map(t=>`<td>${t}</td>`).join("")}</tr><tr><th>k<sub>y</sub> (strength)</th>${Object.values(KY).map(k=>`<td>${k.toFixed(2)}</td>`).join("")}</tr><tr><th>k<sub>E</sub> (stiffness)</th>${Object.values(KE).map(k=>`<td>${k.toFixed(2)}</td>`).join("")}</tr></table>
-  ${labRow("bM","1. Maximum bending moment, M<sub>max</sub>","kip·ft")}
-  ${labRow("bS","2. Maximum bending stress, σ<sub>max</sub>","ksi")}
-  ${labRow("bF1","3. Factor of safety against yield at room temperature","")}
-  ${labRow("bF2",`4. Factor of safety against yield at ${p.T}°C`,"")}
-  ${labRow("bD",`5. Midspan deflection is δ = 5wL⁴/(384EI). How many times larger is δ at ${p.T}°C?`,"×")}
-  <p><button class="btn" onclick="checkLab('b')">Check Part B</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
-  ${S.labDone.b?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: compare this with the sagging deck in the drivers' videos. What does an FS below 1 under ordinary loads mean?</p>`:""}
-  ${S.lab.bmsg?`<div class="msg bad">${esc(S.lab.bmsg)}</div>`:""}</div>${next()}`;
+  return `<div class="card"><h2>Lab bench</h2><p>Dr. Nair said "put numbers on it." Two problems test whether the steel could have carried its load once the fire heated it. Your numbers are unique to you. You get unlimited attempts, and the checker gives targeted hints for common mistakes. Answers within 2% count as correct.</p>
+  <p class="note">These are simplified classroom models with classroom values, not the real bridge's dimensions.</p></div>
+
+  <div class="card"><h3 style="margin-top:0">Problem 1: Bending in a fire-heated girder</h3>
+  ${beamSVG(p)}
+  <p>Model one northbound girder as a <b>simply supported beam</b> (pin at A, roller at B) with span <b>L = ${p.L} ft</b> and uniform load <b>w = ${p.w} kip/ft</b>. The cross-section has moment of inertia <b>I = ${p.I.toLocaleString()} in⁴</b> about the neutral axis, and <b>c = ${p.c} in</b> from the neutral axis to the outer fiber. At room temperature the steel's yield strength is <b>F<sub>y</sub> = 50 ksi</b>. Assume the fire heated the girder to <b>${p.T}°C</b>.</p>
+  <p>Use <b>σ<sub>max</sub> = Mc/I</b>. In a fire, steel's yield strength drops to <b>k<sub>y</sub>·F<sub>y</sub></b>. Interpolate linearly:</p>
+  <table><tr><th>T (°C)</th>${Object.keys(KY).map(t=>`<td>${t}</td>`).join("")}</tr><tr><th>k<sub>y</sub></th>${Object.values(KY).map(k=>`<td>${k.toFixed(2)}</td>`).join("")}</tr></table>
+  ${labRow("pR","1. Reaction at A, A<sub>y</sub>","kip")}
+  ${labRow("pM","2. Maximum bending moment, M<sub>max</sub> (draw your V and M diagrams)","kip·ft")}
+  ${labRow("pS","3. Maximum bending stress, σ<sub>max</sub> = Mc/I","ksi")}
+  ${labRow("pF1","4. Factor of safety against yield at room temperature","")}
+  ${labRow("pK",`5. k<sub>y</sub> at ${p.T}°C`,"")}
+  ${labRow("pF2",`6. Factor of safety against yield at ${p.T}°C`,"")}
+  <p><button class="btn" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
+  ${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
+  ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>`:""}
+  </div>
+
+  <div class="card"><h3 style="margin-top:0">Problem 2: Principal stresses in the girder web (Mohr's circle)</h3>
+  <div class="figrow"><div>${elementSVG(p)}</div><div>
+  <p>Near support A, the girder's web carries both bending and shear. At one point in the web, the state of plane stress is:</p>
+  <p style="font-size:1.1rem"><b>σ<sub>x</sub> = ${p.sx} ksi</b>, &nbsp; <b>σ<sub>y</sub> = ${p.sy} ksi</b>, &nbsp; <b>τ<sub>xy</sub> = ${p.tau} ksi</b></p>
+  <p>Use Mohr's circle with <b>τ plotted positive downward</b>. Plot the x-face at (σ<sub>x</sub>, τ<sub>xy</sub>) and the y-face at (σ<sub>y</sub>, −τ<sub>xy</sub>). Give θ<sub>p1</sub>, the angle from the x-axis to the σ<sub>1</sub> direction on the element, as a magnitude and a direction.</p></div></div>
+  ${labRow("mC","1. Center, σ<sub>avg</sub>","ksi")}
+  ${labRow("mR","2. Radius, R","ksi")}
+  <div id="mohr" style="margin:8px 0"></div><div id="mohrmsg" class="msg"></div>
+  ${labRow("m1","3. Principal stress σ<sub>1</sub>","ksi")}
+  ${labRow("m2","4. Principal stress σ<sub>2</sub>","ksi")}
+  ${labRow("mT","5. θ<sub>p1</sub>, magnitude","°")}
+  ${labRow("mD","6. θ<sub>p1</sub>, direction","",["Clockwise","Counterclockwise"])}
+  ${labRow("mX","7. Maximum in-plane shear stress, τ<sub>max</sub>","ksi")}
+  ${labRow("mY",`8. Yield strength at ${p.T}°C, k<sub>y</sub>·F<sub>y</sub>`,"ksi")}
+  ${labRow("mQ","9. By this simple check (σ<sub>1</sub> vs. k<sub>y</sub>·F<sub>y</sub>), does the web yield?","",["Yes","No"])}
+  <p><button class="btn" onclick="checkLab('b')">Check Problem 2</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
+  ${(S.lab.bfb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}
+  ${S.labDone.b?`<div class="msg ok">Unlocked:</div>${evHTML("C2",calcCards().C2)}<p class="note">Think about it: real yield criteria (Tresca, von Mises) use both principal stresses, so this check is a first look. What does it tell you about how much margin the fire took away?</p>`:""}
+  </div>${next()}`;
 }
-function near(v,t){v=parseFloat(v);if(!isFinite(v))return false;return Math.abs(v-t)<=0.02*Math.abs(t);}
+function near(v,t,tol=0.02){v=parseFloat(v);if(!isFinite(v))return false;return Math.abs(v-t)<=tol*Math.abs(t)+1e-9;}
 function checkLab(part){
-  const p=P();S.tries[part]=(S.tries[part]||0)+1;
-  const keys=part==="a"?[["aT",p.srt],["aV",p.vmph],["aA",p.a49]]:[["bM",p.M],["bS",p.sig],["bF1",p.FS20],["bF2",p.FST],["bD",p.sag]];
-  let all=true;keys.forEach(([k,t])=>{const ok=near(S.lab[k],t);S.lab[k+"_ok"]=ok;if(!ok)all=false;});
-  if(all){S.labDone[part]=true;S.lab[part+"msg"]="";}
-  else S.lab[part+"msg"]=part==="a"?"Not yet. Set m·a·h = m·g·(t/2) at the tipping point. Convert mph to ft/s (1 mph = 5280/3600 ft/s), and convert back at the end.":"Not yet. M is in kip·ft, but σ = M/S needs kip·in. Is your temperature between two table entries? For deflection, only E changes.";
+  const p=P();S.tries[part]=(S.tries[part]||0)+1;const L=S.lab,fb=[];let all=true;
+  const mark=(k,ok)=>{L[k+"_ok"]=ok;if(!ok)all=false;};
+  if(part==="a"){
+    mark("pR",near(L.pR,p.RA));if(!L.pR_ok&&near(L.pR,p.w*p.L))fb.push("Reaction: that's the total load wL. By symmetry, each support carries half.");
+    mark("pM",near(L.pM,p.M));
+    if(!L.pM_ok){if(near(L.pM,p.w*p.L*p.L/4)||near(L.pM,p.w*p.L*p.L/2))fb.push("Moment: check your M diagram. For a uniform load on a simply supported beam, M<sub>max</sub> is at midspan and equals the area under the V diagram from A to midspan.");
+      else if(near(L.pM,p.M*12))fb.push("Moment: this question asks for kip·ft. Convert to kip·in in the next step.");}
+    mark("pS",near(L.pS,p.sig));
+    if(!L.pS_ok){if(near(L.pS,p.sig/12)){fb.push("Units! M is in kip·ft, but c is in inches and I is in in⁴. Convert M to kip·in (×12) before using σ = Mc/I. Think of this as your pre-trip check.");S.unitSlips=(S.unitSlips||0)+1;}
+      else if(near(L.pS,p.sig*2))fb.push("Stress: c is measured from the neutral axis to the outer fiber, which is half the depth.");
+      else if(near(L.pS,p.sig*1000)){fb.push("Units: that looks like psi. Answer in ksi.");S.unitSlips=(S.unitSlips||0)+1;}}
+    mark("pF1",near(L.pF1,p.FS20));
+    mark("pK",near(L.pK,p.ky));if(!L.pK_ok&&p.T===650&&(near(L.pK,0.47)||near(L.pK,0.23)))fb.push("k<sub>y</sub>: 650°C falls between two table entries, so interpolate.");
+    mark("pF2",near(L.pF2,p.FST));if(!L.pF2_ok&&near(L.pF2,p.FS20))fb.push("Hot FS: at high temperature the yield strength is k<sub>y</sub>·F<sub>y</sub>, not F<sub>y</sub>.");
+  }else{
+    mark("mC",near(L.mC,p.avg));
+    if(!L.mC_ok){if(near(L.mC,(p.sx-p.sy)/2))fb.push("Center: that's half the difference. The center is the average, (σ<sub>x</sub> + σ<sub>y</sub>)/2.");
+      else if(near(L.mC,(p.sx-p.sy)/2*-1)||near(L.mC,(p.sx+Math.abs(p.sy))/2))fb.push("Center: watch the sign of σ<sub>y</sub>. Compression is negative.");}
+    mark("mR",near(L.mR,p.Rm));
+    if(!L.mR_ok){if(near(L.mR,Math.hypot(p.sx-p.sy,p.tau)))fb.push("Radius: use half the difference, R = √[((σ<sub>x</sub> − σ<sub>y</sub>)/2)² + τ<sub>xy</sub>²].");
+      else if(near(L.mR,Math.hypot(p.avg,p.tau)))fb.push("Radius: inside the square root it's (σ<sub>x</sub> − σ<sub>y</sub>)/2, not the average.");
+      else fb.push("Radius: R is the distance from the center to the x-face point. Your circle on the plot should pass through both face points.");}
+    mark("m1",near(L.m1,p.s1));mark("m2",near(L.m2,p.s2));
+    if(near(L.m1,p.s2)&&near(L.m2,p.s1))fb.push("Principal stresses: σ<sub>1</sub> is the larger (algebraically) of the two.");
+    mark("mT",near(L.mT,p.thMag));
+    if(!L.mT_ok){if(near(L.mT,2*p.thMag))fb.push("Angle: that's 2θ<sub>p</sub>, the angle on the circle. The element rotates half as much.");
+      else if(near(L.mT,90-p.thMag))fb.push("Angle: measure from the x-face point to σ<sub>1</sub> on the circle (2θ<sub>p1</sub>), then halve it.");}
+    mark("mD",L.mD===p.thDir);if(!L.mD_ok&&L.mD)fb.push("Direction: on Hibbeler's circle (τ positive downward), the element rotates in the same direction you rotate on the circle from the x-face point to σ<sub>1</sub>.");
+    mark("mX",near(L.mX,p.Rm));if(!L.mX_ok&&near(L.mX,p.s1))fb.push("τ<sub>max</sub>: the maximum in-plane shear stress equals the radius of the circle.");
+    mark("mY",near(L.mY,p.Fyh));if(!L.mY_ok&&near(L.mY,50))fb.push("Hot yield strength: multiply F<sub>y</sub> by k<sub>y</sub> at your temperature (same as Problem 1).");
+    mark("mQ",L.mQ===p.yields);
+  }
+  L[part+"fb"]=fb;if(all){S.labDone[part]=true;}
   save();render();
 }
 
+/* ---------- RCA ---------- */
 function vRCA(){
-  const cards=allCards();const live=liveHyps();
+  const cards=allCards();const live=liveHyps();const ch=choiceIds();
   return `<div class="card"><h2>Root cause analysis</h2>
-  <p>Investigators rarely find one cause. They find a chain of causes, some close to the event and some built into the system. Build your analysis in three steps.</p></div>
+  <p>Investigators rarely find one cause. They find a chain: some links are physics, and some are choices people and organizations made under pressure. Build your analysis in four steps.</p></div>
   <div class="card"><h3 style="margin-top:0">Step 1: Your fishbone</h3><p class="note">Every cause on your list, sorted by category. Causes you ruled out are crossed out.</p>
-  <div class="fish">${CATS.map(c=>`<div><b>${c}</b>${S.hyp.filter(h=>okHyp(h)&&h.c===c).map(h=>`<div class="${h.s==="Ruled out"?"x":""}" style="border:0;padding:2px 0">• ${esc(h.t)}</div>`).join("")||'<span class="note">(none yet)</span>'}</div>`).join("")}</div></div>
-  <div class="card"><h3 style="margin-top:0">Step 2: 5 Whys</h3><p>Start at the collapse and keep asking "why?" until you reach something a person, company, or rule could have changed.</p>
+  <div class="fish">${CATS.map(c=>`<div><b>${c}</b>${S.hyp.filter(h=>okHyp(h)&&h.c===c).map(h=>`<div class="${h.s==="Ruled out"?"x":""}">• ${esc(h.t)}</div>`).join("")||'<span class="note">(none yet)</span>'}</div>`).join("")}</div></div>
+  <div class="card"><h3 style="margin-top:0">Step 2: 5 Whys</h3><p>Start at the collapse and keep asking "why?" Your chain should pass through the physics and keep going until you reach a decision that a person, company, or rule-maker could have made differently.</p>
   <p><b>Problem:</b> The northbound I-95 overpass collapsed.</p>
   ${S.why.map((w,i)=>`<div class="why"><b>Why ${i+1}?</b><input type="text" data-why="${i}" value="${esc(w)}" placeholder="${i===0?"Because…":"And that happened because…"}"></div>`).join("")}</div>
-  <div class="card"><h3 style="margin-top:0">Step 3: Your three most important root causes</h3><p>For each one, link the evidence, classify it, name the virtue that could have interrupted it, and propose a prevention.</p></div>
+  <div class="card"><h3 style="margin-top:0">Step 3: Moments of choice</h3><p>Virtues aren't labels you stick on people afterward. They show up at moments of choice, when the right action is <i>hard</i>: you're tired, there's a schedule, a check feels routine, or protection costs money. Pick three ⚖ moments from your evidence. Include at least one where a virtue was shown and one where it was missing.</p></div>
+  ${S.mc.map((r,i)=>`<div class="rc mc"><h3>Moment ${i+1}</h3>
+    <label>Moment of choice</label><select data-mc="${i}" data-f="m"><option value="">Choose…</option>${ch.map(k=>`<option value="${k}" ${r.m===k?"selected":""}>${k}: ${esc(CARDS[k].who)}: ${esc(CARDS[k].t.slice(0,70))}…</option>`).join("")}</select>
+    <div class="row"><div><label>Your judgment</label><select data-mc="${i}" data-f="judge"><option value="">Choose…</option>${JUDGE.map(o=>`<option ${r.judge===o?"selected":""}>${o}</option>`).join("")}</select></div>
+    <div><label>Which virtue was shown or missing?</label><select data-mc="${i}" data-f="virtue"><option value="">Choose…</option>${VIRTUES.map(o=>`<option ${r.virtue===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
+    <label>What made the right action hard here? (pressures, routines, incentives, uncertainty)</label><textarea data-mc="${i}" data-f="hard">${esc(r.hard)}</textarea>
+    <label>What would practical wisdom have looked like, or what system change would make the right choice easier?</label><textarea data-mc="${i}" data-f="wise">${esc(r.wise)}</textarea></div>`).join("")}
+  <div class="card"><h3 style="margin-top:0">Step 4: Your three most important root causes</h3><p>Choose from your list, link the evidence, classify each one, and propose a prevention. Include at least one Structure & materials cause backed by your lab, and at least one People or Rules & organizations cause.</p>${legend}</div>
   ${S.top.map((r,i)=>`<div class="rc"><h3>Root cause ${i+1}</h3>
     <div class="row"><div><label>From your list</label><select data-t="${i}" data-f="h"><option value="">Choose…</option>${live.map(h=>`<option value="${h.id}" ${r.h===h.id?"selected":""}>${esc(h.t)} (${esc(h.c)})</option>`).join("")}</select></div>
     <div><label>Type</label><select data-t="${i}" data-f="type"><option value="">Choose…</option>${TYPES.map(o=>`<option ${r.type===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
-    <label>Evidence (click to link)</label><div>${Object.entries(cards).map(([k,t])=>evHTML(k,t,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
-    <div class="row"><div><label>Virtue that could have interrupted this cause</label><select data-t="${i}" data-f="virtue"><option value="">Choose…</option>${VIRTUES.map(o=>`<option ${r.virtue===o?"selected":""}>${o}</option>`).join("")}</select></div><div></div></div>
+    <label>Evidence (click to link)</label><div>${Object.entries(cards).map(([k,c])=>evHTML(k,c,"chip "+(r.cards.includes(k)?"sel":""))).join("")}</div>
     <label>Prevention: what specific change would break this link? Who would make it?</label><textarea data-t="${i}" data-f="fix">${esc(r.fix)}</textarea></div>`).join("")}
   <div class="card" id="err">${errHTML()}</div>${next()}`;
 }
 function errHTML(){const e=rcaErrors();return e.length?`<b>Still needed:</b><ul>${e.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:`<span class="msg ok">Analysis complete.</span>`;}
 
 function vReflect(){
+  const tries=(S.tries.a||0)+(S.tries.b||0),slips=S.unitSlips||0;
   return `<div class="card"><h2>Reflection</h2>
-  <label for="r1">1. Compare your first list with your final analysis. What did the video lead you to miss or over-weight, and why do you think that happened? (40+ words)</label>
+  <label for="r1">1. Compare your first list with your final analysis. What did the video lead you to miss or over-weight? What did the human and organizational evidence change about how you see this collapse? (40+ words)</label>
   <textarea id="r1" data-r="r1" style="min-height:120px">${esc(S.r1)}</textarea><div class="note" id="r1c">${words(S.r1)} words</div>
-  <label for="r2">2. Which root cause is closest to the kind of work you'll do as an engineer? What habit or virtue will you practice so you don't become one of the links in a chain like this? (40+ words)</label>
+  <label for="r2">2. Your "pre-trip check." The open manhole cover was a check that became routine, then got skipped. At the lab bench you used ${tries} attempt${tries===1?"":"s"}${slips?`, including ${slips} unit slip${slips===1?"":"s"}`:""}. What is <i>your</i> pre-trip check in engineering work (units, free-body diagrams, sign conventions, a sanity check on the answer)? When do you skip it, what makes it hard to keep doing, and which virtue would help you keep it? (40+ words)</label>
   <textarea id="r2" data-r="r2" style="min-height:120px">${esc(S.r2)}</textarea><div class="note" id="r2c">${words(S.r2)} words</div></div>
   <p><button id="nextBtn" class="btn" ${done("reflect")?"":"disabled"} onclick="go('report')">See my report →</button></p>`;
 }
@@ -350,13 +513,14 @@ function reportText(){
   let t=`THE I-95 COLLAPSE INVESTIGATION: EGR 343\nName: ${S.name}\nCompletion code: ${code(S.name)}\n\n`;
   t+=`FIRST LIST (from the video), with verdicts after the interviews\n`;
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t}  ->  ${h.s}\n`;});
-  t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;
-  intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
-  t+=`\nLAB BENCH (your parameters)\nPart A: R=${p.R} ft, t=${TRACK} ft, h=${p.h} ft\n  a/g threshold=${S.lab.aT}, rollover speed=${S.lab.aV} mph, a/g at ${VREF} mph=${S.lab.aA}  [attempts: ${S.tries.a||0}]\n`;
-  t+=`Part B: L=${p.L} ft, w=${p.w} kip/ft, S=${p.S} in^3, T=${p.T} C\n  Mmax=${S.lab.bM} kip-ft, sigma=${S.lab.bS} ksi, FS(20C)=${S.lab.bF1}, FS(${p.T}C)=${S.lab.bF2}, deflection x${S.lab.bD}  [attempts: ${S.tries.b||0}]\n\n`;
+  t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
+  t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in^4, c=${p.c} in, T=${p.T} C\n  Ay=${S.lab.pR} kip, Mmax=${S.lab.pM} kip-ft, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
+  t+=`Problem 2: sx=${p.sx}, sy=${p.sy}, txy=${p.tau} ksi\n  center=${S.lab.mC}, R=${S.lab.mR}, s1=${S.lab.m1}, s2=${S.lab.m2}, theta_p1=${S.lab.mT} deg ${S.lab.mD}, tmax=${S.lab.mX}, kyFy=${S.lab.mY} ksi, yields? ${S.lab.mQ}  [attempts: ${S.tries.b||0}]\n  Unit slips caught: ${S.unitSlips||0}\n\n`;
   t+=`5 WHYS\nProblem: The northbound I-95 overpass collapsed.\n`;S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
-  t+=`\nTOP THREE ROOT CAUSES\n`;
-  S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}]\n   Type: ${r.type}\n   Virtue: ${r.virtue}\n   Evidence: ${r.cards.map(c=>c+": "+cards[c]).join("\n             ")}\n   Prevention: ${r.fix.trim()}\n\n`;});
+  t+=`\nMOMENTS OF CHOICE\n`;
+  S.mc.forEach((r,i)=>{const c=CARDS[r.m]||{who:"",t:""};t+=`${i+1}. ${r.m} (${c.who}): ${c.t}\n   Judgment: ${r.judge}; Virtue: ${r.virtue}\n   What made it hard: ${r.hard.trim()}\n   Practical wisdom / system change: ${r.wise.trim()}\n\n`;});
+  t+=`TOP THREE ROOT CAUSES\n`;
+  S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}]\n   Type: ${r.type}\n   Evidence: ${r.cards.map(c=>c+": "+(cards[c]?cards[c].t:"")).join("\n             ")}\n   Prevention: ${r.fix.trim()}\n\n`;});
   t+=`REFLECTION\n1. ${S.r1.trim()}\n\n2. ${S.r2.trim()}\n`;
   return t;
 }
@@ -374,21 +538,17 @@ function copyRep(b){navigator.clipboard.writeText(reportText()).then(()=>{b.text
 function wire(){
   const m=document.getElementById("main");
   const nm=document.getElementById("nm");if(nm)nm.addEventListener("input",()=>{S.name=nm.value;save();refresh();});
-  m.querySelectorAll("[data-h]").forEach(el=>{
-    const ev=el.tagName==="SELECT"?"change":"input";
-    el.addEventListener(ev,()=>{const h=hypById(el.dataset.h);if(h){h[el.dataset.f]=el.value;save();refresh();}});
-  });
+  const on=(sel,fn)=>m.querySelectorAll(sel).forEach(el=>el.addEventListener(el.tagName==="SELECT"?"change":"input",()=>fn(el)));
+  on("[data-h]",el=>{const h=hypById(el.dataset.h);if(h){h[el.dataset.f]=el.value;save();refresh();}});
   m.querySelectorAll("[data-del]").forEach(el=>el.addEventListener("click",()=>{S.hyp=S.hyp.filter(h=>h.id!==el.dataset.del);save();render();}));
-  m.querySelectorAll("[data-lab]").forEach(el=>el.addEventListener("input",()=>{S.lab[el.dataset.lab]=el.value;save();}));
-  m.querySelectorAll("[data-why]").forEach(el=>el.addEventListener("input",()=>{S.why[+el.dataset.why]=el.value;save();refresh();}));
-  m.querySelectorAll("[data-t]").forEach(el=>{
-    const ev=el.tagName==="SELECT"?"change":"input";
-    el.addEventListener(ev,()=>{S.top[+el.dataset.t][el.dataset.f]=el.value;save();refresh();});
-  });
+  on("[data-lab]",el=>{S.lab[el.dataset.lab]=el.value;save();if(el.dataset.lab==="mC"||el.dataset.lab==="mR")drawMohr();});
+  on("[data-why]",el=>{S.why[+el.dataset.why]=el.value;save();refresh();});
+  on("[data-mc]",el=>{S.mc[+el.dataset.mc][el.dataset.f]=el.value;save();refresh();});
+  on("[data-t]",el=>{S.top[+el.dataset.t][el.dataset.f]=el.value;save();refresh();});
   m.querySelectorAll(".rc .chip").forEach(el=>el.addEventListener("click",()=>{
-    const i=[...m.querySelectorAll(".rc")].indexOf(el.closest(".rc"));const a=S.top[i].cards;const id=el.dataset.id;
+    const rcs=[...m.querySelectorAll(".rc:not(.mc)")];const i=rcs.indexOf(el.closest(".rc"));const a=S.top[i].cards;const id=el.dataset.id;
     const j=a.indexOf(id);if(j>=0)a.splice(j,1);else a.push(id);el.classList.toggle("sel");save();refresh();}));
-  m.querySelectorAll("[data-r]").forEach(el=>el.addEventListener("input",()=>{S[el.dataset.r]=el.value;save();document.getElementById(el.dataset.r+"c").textContent=words(el.value)+" words";refresh();}));
+  on("[data-r]",el=>{S[el.dataset.r]=el.value;save();document.getElementById(el.dataset.r+"c").textContent=words(el.value)+" words";refresh();});
 }
 
 /* ================= INSTRUCTOR CHECKER (#checker) ================= */
@@ -399,13 +559,13 @@ function vChecker(){
 function chk(n){
   const o=document.getElementById("co");if(!n.trim()){o.innerHTML="";return;}const p=params(n);
   o.innerHTML=`<p>Expected code: <span class="code">${code(n)}</span></p>
-  <p><b>Part A</b> (R=${p.R} ft, h=${p.h} ft): a/g threshold=${fmt(p.srt)}, rollover speed=${fmt(p.vmph)} mph, a/g at ${VREF} mph=${fmt(p.a49)}</p>
-  <p><b>Part B</b> (L=${p.L} ft, w=${p.w} kip/ft, S=${p.S} in³, T=${p.T}°C): M=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, FS<sub>T</sub>=${fmt(p.FST)}, deflection ×${fmt(p.sag)}</p>`;
+  <p><b>Problem 1</b> (L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in⁴, c=${p.c} in, T=${p.T}°C): A<sub>y</sub>=${fmt(p.RA,4)} kip, M=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, k<sub>y</sub>=${fmt(p.ky)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
+  <p><b>Problem 2</b> (σx=${p.sx}, σy=${p.sy}, τxy=${p.tau} ksi): center=${fmt(p.avg)}, R=${fmt(p.Rm,4)}, σ₁=${fmt(p.s1,4)}, σ₂=${fmt(p.s2,4)}, θp1=${fmt(p.thMag)}° ${p.thDir}, τmax=${fmt(p.Rm,4)}, k<sub>y</sub>F<sub>y</sub>=${fmt(p.Fyh)} ksi, yields? ${p.yields}</p>`;
 }
 
 function route(){
   if(location.hash==="#checker"){document.getElementById("nav").innerHTML="";document.getElementById("main").innerHTML=vChecker();}
-  else{if(!STAGES.some(s=>s[0]===S.stage)||!unlocked(S.stage))S.stage="video";render();}
+  else{if(!STAGES.some(s=>s[0]===S.stage)||!unlocked(S.stage))S.stage=S.locked?"interviews":"video";if(!unlocked(S.stage))S.stage="video";render();}
 }
 window.addEventListener("hashchange",route);
 route();
