@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mohr's Circle Practice | EGR 343</title>
+<style>
+  :root{--maroon:#8C1D40;--gold:#FFC627;--ink:#191919;--muted:#5c5c5c;--line:#d9d9d9;--bg:#fafafa;--ok:#2e7d32;--bad:#b00020;--blue:#1565c0}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Roboto,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--ink);background:var(--bg);line-height:1.5}
+  header{background:var(--maroon);color:#fff;padding:14px 20px;border-bottom:5px solid var(--gold)}
+  header h1{margin:0;font-size:1.3rem} header p{margin:2px 0 0;font-size:.9rem;opacity:.9}
+  main{max-width:980px;margin:0 auto;padding:20px}
+  h2{color:var(--maroon);margin:0 0 6px;font-size:1.15rem}
+  .card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+  .card.locked{opacity:.45;pointer-events:none}
+  .btn{background:var(--maroon);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;font-weight:500;cursor:pointer}
+  .btn.alt{background:#fff;color:var(--maroon);border:1px solid var(--maroon)}
+  .btn.sm{padding:4px 10px;font-size:.85rem}
+  input,select{font:inherit;padding:6px 8px;border:1px solid #bbb;border-radius:6px;background:#fff}
+  input[type=number]{width:120px}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 18px;align-items:end}
+  .field label{display:block;font-weight:500;font-size:.92rem;margin-bottom:3px}
+  .row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;margin:6px 0}
+  .row label{font-weight:500}
+  .st{min-width:24px;font-size:1.1rem}
+  .ok{color:var(--ok)} .bad{color:var(--bad)}
+  .note{font-size:.88rem;color:var(--muted)}
+  .fb{background:#fdecee;border-left:4px solid var(--bad);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0;font-size:.92rem}
+  .good{background:#e8f5e9;border-left:4px solid var(--ok);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0;font-size:.92rem}
+  .reveal{background:#fffbea;border-left:4px solid var(--gold);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0;font-size:.92rem}
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  @media(max-width:860px){.layout{grid-template-columns:1fr}}
+  .sticky{position:sticky;top:10px}
+  svg.fig{width:100%;height:auto;background:#fff;border:1px solid var(--line);border-radius:8px}
+  .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)}
+  :focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+  .legend span{display:inline-block;margin-right:12px;font-size:.82rem}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Mohr's Circle Practice</h1>
+  <p>EGR 343 Mechanics of Materials · Hibbeler convention: τ plotted positive downward</p>
+</header>
+<main>
+  <div class="card">
+    <h2>1. Enter the stress state</h2>
+    <p class="note" style="margin-top:0">Type in the stresses from your problem, or click <b>Random problem</b> to practice. Use the sign convention from class: tension is positive, and τ<sub>xy</sub> is positive when it acts upward on the right (+x) face.</p>
+    <div class="grid">
+      <div class="field"><label for="sx">σ<sub>x</sub></label><input id="sx" type="number" step="any"></div>
+      <div class="field"><label for="sy">σ<sub>y</sub></label><input id="sy" type="number" step="any"></div>
+      <div class="field"><label for="txy">τ<sub>xy</sub></label><input id="txy" type="number" step="any"></div>
+      <div class="field"><label for="units">Units</label><select id="units"><option>ksi</option><option>MPa</option><option>psi</option><option>kPa</option></select></div>
+      <div class="field"><label for="ang">Rotation angle θ (optional, degrees)</label><input id="ang" type="number" step="any" placeholder="e.g. 30"></div>
+      <div class="field"><label for="angdir">θ direction</label><select id="angdir"><option>Counterclockwise</option><option>Clockwise</option></select></div>
+    </div>
+    <p style="margin-bottom:0"><button class="btn" id="start">Start</button> <button class="btn alt" id="rand">Random problem</button></p>
+    <div id="startmsg" aria-live="polite"></div>
+  </div>
+
+  <div class="layout" id="work" hidden>
+    <div>
+      <div class="card" id="c2"><h2>2. Plot the two face points</h2>
+        <p class="note" style="margin-top:0">Each point is (σ, τ). Watch the plot as you type.</p>
+        <div class="row"><label>x-face: σ =</label><input id="xs" type="number" step="any" data-k="xs"><span class="st" id="xs_st"></span></div>
+        <div class="row"><label>x-face: τ =</label><input id="xt" type="number" step="any" data-k="xt"><span class="st" id="xt_st"></span></div>
+        <div class="row"><label>y-face: σ =</label><input id="ys" type="number" step="any" data-k="ys"><span class="st" id="ys_st"></span></div>
+        <div class="row"><label>y-face: τ =</label><input id="yt" type="number" step="any" data-k="yt"><span class="st" id="yt_st"></span></div>
+        <button class="btn" data-check="2">Check</button><div id="fb2" aria-live="polite"></div></div>
+
+      <div class="card locked" id="c3"><h2>3. Center and radius</h2>
+        <div class="row"><label for="C">Center, σ<sub>avg</sub> =</label><input id="C" type="number" step="any" data-k="C"><span class="st" id="C_st"></span></div>
+        <div class="row"><label for="R">Radius, R =</label><input id="R" type="number" step="any" data-k="R"><span class="st" id="R_st"></span></div>
+        <button class="btn" data-check="3">Check</button><div id="fb3" aria-live="polite"></div></div>
+
+      <div class="card locked" id="c4"><h2>4. Principal stresses and directions</h2>
+        <div class="row"><label for="s1">σ<sub>1</sub> =</label><input id="s1" type="number" step="any" data-k="s1"><span class="st" id="s1_st"></span></div>
+        <div class="row"><label for="s2">σ<sub>2</sub> =</label><input id="s2" type="number" step="any" data-k="s2"><span class="st" id="s2_st"></span></div>
+        <div class="row"><label for="tp">θ<sub>p1</sub> (angle from x-axis to σ<sub>1</sub>), degrees =</label><input id="tp" type="number" step="any" data-k="tp"><span class="st" id="tp_st"></span></div>
+        <div class="row"><label for="tpd">θ<sub>p1</sub> direction</label><select id="tpd" data-k="tpd"><option value="">Choose…</option><option>Counterclockwise</option><option>Clockwise</option></select><span class="st" id="tpd_st"></span></div>
+        <button class="btn" data-check="4">Check</button><div id="fb4" aria-live="polite"></div></div>
+
+      <div class="card locked" id="c5"><h2>5. Maximum in-plane shear stress</h2>
+        <div class="row"><label for="tm">τ<sub>max, in-plane</sub> =</label><input id="tm" type="number" step="any" data-k="tm"><span class="st" id="tm_st"></span></div>
+        <div class="row"><label for="sa">Normal stress on the max-shear planes =</label><input id="sa" type="number" step="any" data-k="sa"><span class="st" id="sa_st"></span></div>
+        <div class="row"><label for="ts">θ<sub>s</sub> (angle from x-axis to the max-shear plane), degrees =</label><input id="ts" type="number" step="any" data-k="ts"><span class="st" id="ts_st"></span></div>
+        <div class="row"><label for="tsd">θ<sub>s</sub> direction</label><select id="tsd" data-k="tsd"><option value="">Choose…</option><option>Counterclockwise</option><option>Clockwise</option></select><span class="st" id="tsd_st"></span></div>
+        <p class="note">Give the smaller angle (45° or less) from the x-axis to either plane of maximum shear.</p>
+        <button class="btn" data-check="5">Check</button><div id="fb5" aria-live="polite"></div></div>
+
+      <div class="card locked" id="c6"><h2>6. Stresses on the rotated element</h2>
+        <p class="note" id="c6note" style="margin-top:0"></p>
+        <div class="row"><label for="rx">σ<sub>x'</sub> =</label><input id="rx" type="number" step="any" data-k="rx"><span class="st" id="rx_st"></span></div>
+        <div class="row"><label for="ry">σ<sub>y'</sub> =</label><input id="ry" type="number" step="any" data-k="ry"><span class="st" id="ry_st"></span></div>
+        <div class="row"><label for="rt">τ<sub>x'y'</sub> =</label><input id="rt" type="number" step="any" data-k="rt"><span class="st" id="rt_st"></span></div>
+        <button class="btn" data-check="6">Check</button><div id="fb6" aria-live="polite"></div></div>
+
+      <div class="card" id="done" hidden><h2>Nice work!</h2><p>You've completed this problem. Try another with <b>Random problem</b>, or type in a new stress state at the top.</p></div>
+    </div>
+    <div class="sticky">
+      <div class="card" style="padding:10px">
+        <div id="plot"></div>
+        <div class="legend note"><span><i style="background:#b00020"></i>x-face</span><span><i style="background:#1565c0"></i>y-face</span><span><i style="background:#2e7d32"></i>principal stresses</span><span><i style="background:#7b1fa2"></i>max shear</span><span><i style="background:#ef6c00"></i>rotated x'-face</span></div>
+        <div id="plotmsg" class="note" aria-live="polite"></div>
+      </div>
+      <div class="card" style="padding:10px"><div id="elem"></div></div>
+    </div>
+  </div>
+  <p class="note">Answers within 2% (or within 0.05 for values near zero) count as correct. After two tries on a step, you can reveal the answer, but try to work it out first. Nothing you enter here is saved or sent anywhere.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let P=null, step=2, tries={}, U="ksi";
+const deg=r=>r*180/Math.PI, rad=d=>d*Math.PI/180;
+function fmt(x){if(Math.abs(x)<5e-10)x=0;return Number(x.toPrecision(4)).toString();}
+function near(v,t){v=parseFloat(v);if(!isFinite(v))return false;return Math.abs(v-t)<=Math.max(0.02*Math.abs(t),0.05);}
+
+function solve(sx,sy,t,ang,dir){
+  const C=(sx+sy)/2, h=(sx-sy)/2, R=Math.hypot(h,t);
+  let th=0.5*deg(Math.atan2(t,h));           // angle to sigma1, + = CCW (Hibbeler)
+  if(R<1e-12)th=0;
+  let s=th>0?th-45:th+45;                     // nearest max-shear plane
+  const o={sx,sy,t,C,h,R,s1:C+R,s2:C-R,tp:Math.abs(th),tpd:th>=0?"Counterclockwise":"Clockwise",tpRaw:th,
+    tm:R,sa:C,ts:Math.abs(s),tsd:s>=0?"Counterclockwise":"Clockwise",tsRaw:s,ang:null};
+  if(isFinite(ang)&&ang!==0){const a=rad(dir==="Clockwise"?-ang:ang);
+    o.ang=deg(a);o.rx=C+h*Math.cos(2*a)+t*Math.sin(2*a);o.ry=C-h*Math.cos(2*a)-t*Math.sin(2*a);o.rt=-h*Math.sin(2*a)+t*Math.cos(2*a);}
+  return o;
+}
+
+/* ---------- drawing ---------- */
+const MK={"#555":"ah","#b00020":"ahR","#1565c0":"ahB","#2e7d32":"ahG"};
+const DEFS=`<defs>${Object.entries(MK).map(([c,id])=>`<marker id="${id}" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="${c}"/></marker>`).join("")}</defs>`;
+function val(id){const v=parseFloat($(id).value);return isFinite(v)?v:null;}
+function drawPlot(){
+  if(!P)return;
+  const W=560,H=420,pad=44;
+  const hr=Math.max(P.R,1e-6)*1.35;
+  const xmin=Math.min(0,P.C-hr),xmax=Math.max(0,P.C+hr);
+  const k=Math.min((W-2*pad)/(xmax-xmin),(H-2*pad)/(2*hr));
+  const X=v=>pad+(v-xmin)*k, Y=t=>H/2+t*k;
+  let s=`<svg class="fig" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mohr's circle plot, sigma horizontal, tau positive downward" style="color:#555">${DEFS}`;
+  s+=`<line x1="${pad-10}" y1="${H/2}" x2="${W-8}" y2="${H/2}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${W-12}" y="${H/2-8}" font-size="15" text-anchor="end" font-style="italic">σ (${U})</text>`;
+  s+=`<line x1="${X(0)}" y1="12" x2="${X(0)}" y2="${H-8}" stroke="#555" stroke-width="1.3" marker-end="url(#ah)"/><text x="${X(0)+8}" y="${H-12}" font-size="15" font-style="italic">τ (+ down)</text>`;
+  const dot=(x,y,c,lab,dy)=>`<circle cx="${X(x)}" cy="${Y(y)}" r="5.5" fill="${c}"/>`+(lab?`<text x="${X(x)+8}" y="${Y(y)+(dy||(y<0?-8:16))}" font-size="13" fill="${c}">${lab}</text>`:"");
+  // student's live points
+  const xs=val("xs"),xt=val("xt"),ys=val("ys"),yt=val("yt");
+  if(step>2){s+=`<line x1="${X(P.sx)}" y1="${Y(P.t)}" x2="${X(P.sy)}" y2="${Y(-P.t)}" stroke="#999" stroke-dasharray="5 4"/>`;}
+  // circle
+  if(step>3){s+=`<circle cx="${X(P.C)}" cy="${Y(0)}" r="${P.R*k}" fill="none" stroke="#1565c0" stroke-width="2"/>`;}
+  else if(step===3){const C=val("C"),R=val("R");if(C!==null)s+=`<circle cx="${X(C)}" cy="${Y(0)}" r="3.5" fill="#555"/>`;
+    if(C!==null&&R!==null&&R>0)s+=`<circle cx="${X(C)}" cy="${Y(0)}" r="${R*k}" fill="none" stroke="#1565c0" stroke-width="2" stroke-dasharray="6 4"/>`;}
+  if(step>3)s+=`<circle cx="${X(P.C)}" cy="${Y(0)}" r="3.5" fill="#555"/><text x="${X(P.C)}" y="${Y(0)+18}" font-size="12" text-anchor="middle" fill="#555">C = ${fmt(P.C)}</text>`;
+  if(step>4){s+=dot(P.s1,0,"#2e7d32","σ₁ = "+fmt(P.s1),-10)+dot(P.s2,0,"#2e7d32","σ₂ = "+fmt(P.s2),-10);
+    // 2θp arc from x-face to sigma1
+    const a0=Math.atan2(P.t,P.h), r=Math.min(P.R*k*0.35,45);
+    if(Math.abs(a0)>1e-3){const x0=X(P.C)+r*Math.cos(a0),y0=Y(0)+r*Math.sin(a0),x1=X(P.C)+r;
+      s+=`<path d="M${x0},${y0} A${r},${r} 0 0 ${a0>0?0:1} ${x1},${Y(0)}" fill="none" stroke="#2e7d32" stroke-width="1.5"/><text x="${X(P.C)+r+6}" y="${Y(0)+(a0>0?16:-6)}" font-size="12" fill="#2e7d32">2θp</text>`;}}
+  if(step>5){s+=dot(P.C,-P.R,"#7b1fa2","",0)+dot(P.C,P.R,"#7b1fa2","",0)+`<text x="${X(P.C)-9}" y="${Y(-P.R)+4}" font-size="12" fill="#7b1fa2" text-anchor="end">τmax = ${fmt(P.R)}</text>`;}
+  if(step>6&&P.ang!==null){const a=Math.atan2(P.t,P.h)-2*rad(P.ang);/* screen angle: CCW element = CCW on circle with tau down */
+    const rx=P.C+P.R*Math.cos(a), rt=P.R*Math.sin(a);
+    s+=`<line x1="${X(rx)}" y1="${Y(rt)}" x2="${X(2*P.C-rx)}" y2="${Y(-rt)}" stroke="#ef6c00" stroke-width="1.5"/>`+dot(rx,rt,"#ef6c00","x' ("+fmt(rx)+", "+fmt(rt)+")");}
+  if(step>2){s+=dot(P.sx,P.t,"#b00020",`x (${fmt(P.sx)}, ${fmt(P.t)})`)+dot(P.sy,-P.t,"#1565c0",`y (${fmt(P.sy)}, ${fmt(-P.t)})`);}
+  else{if(xs!==null&&xt!==null)s+=dot(xs,xt,"#b00020","x?");if(ys!==null&&yt!==null)s+=dot(ys,yt,"#1565c0","y?");}
+  s+=`</svg>`;$("plot").innerHTML=s;
+  let m="";
+  if(step===3){const C=val("C"),R=val("R");if(C!==null&&R!==null&&R>0){const e1=Math.abs(Math.hypot(P.sx-C,P.t)-R),e2=Math.abs(Math.hypot(P.sy-C,-P.t)-R);
+    m=(e1<=Math.max(0.03*R,0.05)&&e2<=Math.max(0.03*R,0.05))?'<span class="ok">✓ Your dashed circle passes through both face points.</span>':'<span class="bad">Your dashed circle misses a face point. A correct circle passes through both.</span>';}}
+  $("plotmsg").innerHTML=m;
+}
+function drawElement(){
+  const R="#b00020",B="#1565c0",G="#2e7d32";let s="";
+  const a=(x1,y1,x2,y2,c)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c}" stroke-width="2.2" marker-end="url(#${MK[c]||"ah"})"/>`;
+  if(P.sx>0)s+=a(172,130,222,130,R)+a(88,130,38,130,R);else if(P.sx<0)s+=a(222,130,174,130,R)+a(38,130,86,130,R);
+  if(P.sy>0)s+=a(130,88,130,38,B)+a(130,172,130,222,B);else if(P.sy<0)s+=a(130,38,130,86,B)+a(130,222,130,174,B);
+  if(P.t!==0){const t=P.t>0;s+=t?a(180,155,180,105,G):a(180,105,180,155,G);s+=t?a(80,105,80,155,G):a(80,155,80,105,G);s+=t?a(105,80,155,80,G):a(155,80,105,80,G);s+=t?a(155,180,105,180,G):a(105,180,155,180,G);}
+  $("elem").innerHTML=`<svg class="fig" viewBox="0 0 260 260" role="img" aria-label="Stress element: sigma x ${P.sx}, sigma y ${P.sy}, tau xy ${P.t} ${U}">${DEFS}
+   <rect x="90" y="90" width="80" height="80" fill="#f4eef0" stroke="#191919" stroke-width="1.5"/>${s}
+   <text x="200" y="120" font-size="13" fill="${R}">σx = ${fmt(P.sx)}</text><text x="138" y="30" font-size="13" fill="${B}">σy = ${fmt(P.sy)}</text><text x="186" y="94" font-size="13" fill="${G}">τxy = ${fmt(P.t)}</text>
+   <g transform="translate(16,244)" style="color:#555"><line x1="0" y1="0" x2="34" y2="0" stroke="#555" marker-end="url(#ah)"/><line x1="0" y1="0" x2="0" y2="-34" stroke="#555" marker-end="url(#ah)"/><text x="38" y="4" font-size="12">x</text><text x="-4" y="-38" font-size="12">y</text></g></svg>
+   <p class="note" style="margin:4px 0 0">Your stress element (${U}).</p>`;
+}
+
+/* ---------- checking ---------- */
+const FIELDS={2:["xs","xt","ys","yt"],3:["C","R"],4:["s1","s2","tp","tpd"],5:["tm","sa","ts","tsd"],6:["rx","ry","rt"]};
+function ans(k){return {xs:P.sx,xt:P.t,ys:P.sy,yt:-P.t,C:P.C,R:P.R,s1:P.s1,s2:P.s2,tp:P.tp,tpd:P.tpd,tm:P.tm,sa:P.sa,ts:P.ts,tsd:P.tsd,rx:P.rx,ry:P.ry,rt:P.rt}[k];}
+function isOK(k){const v=$(k).value;
+  if(k==="tpd")return P.tp<0.05||Math.abs(P.tp-90)<0.05||v===P.tpd;
+  if(k==="tsd")return Math.abs(P.ts-45)<0.05||v===P.tsd;
+  return near(v,ans(k));}
+function hints(n){const v=k=>parseFloat($(k).value),h=[];
+  if(n===2){
+    if(near(v("xt"),-P.t)&&P.t!==0)h.push("x-face τ: plot the x-face at (σ<sub>x</sub>, τ<sub>xy</sub>), using τ<sub>xy</sub> exactly as given, sign included.");
+    if(near(v("yt"),P.t)&&P.t!==0)h.push("y-face τ: the y-face goes at (σ<sub>y</sub>, <b>−</b>τ<sub>xy</sub>). Flip the sign of τ<sub>xy</sub>.");
+    if(near(v("xs"),P.sy)&&near(v("ys"),P.sx))h.push("You swapped the faces: the x-face uses σ<sub>x</sub> and the y-face uses σ<sub>y</sub>.");}
+  if(n===3){
+    if(near(v("C"),P.h))h.push("Center: that's half the <i>difference</i>. The center is the <i>average</i>, (σ<sub>x</sub> + σ<sub>y</sub>)/2. Watch the signs.");
+    if(near(v("R"),Math.hypot(P.sx-P.sy,P.t)))h.push("Radius: use half the difference, R = √[((σ<sub>x</sub> − σ<sub>y</sub>)/2)² + τ<sub>xy</sub>²].");
+    else if(near(v("R"),Math.hypot(P.C,P.t)))h.push("Radius: inside the square root it's (σ<sub>x</sub> − σ<sub>y</sub>)/2, not the average.");
+    if(!isOK("R"))h.push("Tip: R is the distance from the center to the x-face point. Your dashed circle should pass through both points.");}
+  if(n===4){
+    if(near(v("s1"),P.s2)&&near(v("s2"),P.s1))h.push("σ<sub>1</sub> is the larger (more positive) principal stress: σ<sub>1</sub> = C + R.");
+    if(near(v("tp"),2*P.tp)&&P.tp>0.05)h.push("θ<sub>p1</sub>: that's 2θ<sub>p</sub>, the angle on the circle. The element rotates half as much.");
+    else if(near(v("tp"),90-P.tp))h.push("θ<sub>p1</sub>: that's the angle to σ<sub>2</sub>. Measure from the x-face point to σ<sub>1</sub> on the circle, then halve it.");
+    if($("tpd").value&&!isOK("tpd"))h.push("Direction: on Hibbeler's circle (τ positive downward), the element rotates in the <b>same</b> direction you rotate on the circle from the x-face point to σ<sub>1</sub>.");}
+  if(n===5){
+    if(near(v("tm"),P.s1)&&!near(P.s1,P.R))h.push("τ<sub>max</sub> equals the radius R of the circle.");
+    if(near(v("sa"),0)&&Math.abs(P.C)>0.05)h.push("On the planes of maximum shear, the normal stress isn't zero. It equals the center, σ<sub>avg</sub>.");
+    if(near(v("ts"),2*P.ts))h.push("θ<sub>s</sub>: that's 2θ<sub>s</sub> on the circle. Halve it.");
+    if(!isOK("ts"))h.push("Tip: on the circle, the max-shear points are 90° from the principal points, so on the element θ<sub>s</sub> is 45° from θ<sub>p</sub>.");}
+  if(n===6){
+    h.push("Rotate 2θ on the circle from the x-face point, in the same direction as θ on the element. The new point is (σ<sub>x'</sub>, τ<sub>x'y'</sub>), and σ<sub>y'</sub> is on the opposite end of the diameter.");}
+  return h;}
+function check(n){
+  tries[n]=(tries[n]||0)+1;let all=true;
+  FIELDS[n].forEach(k=>{const ok=isOK(k);all=all&&ok;$(k+"_st").innerHTML=ok?'<span class="ok" aria-hidden="true">✓</span><span class="sr-only">correct</span>':'<span class="bad" aria-hidden="true">✗</span><span class="sr-only">not yet</span>';});
+  const fb=$("fb"+n);
+  if(all){fb.innerHTML='<div class="good">✓ Correct! The plot has been updated.</div>';advance(n);}
+  else{const h=hints(n);fb.innerHTML=h.map(x=>`<div class="fb">${x}</div>`).join("")+(tries[n]>=2?`<button class="btn alt sm" data-reveal="${n}" style="margin-top:6px">Reveal the answers for this step</button>`:"");
+    const r=fb.querySelector("[data-reveal]");if(r)r.onclick=()=>reveal(n);}
+  drawPlot();
+}
+function reveal(n){
+  const lab={xs:"x-face σ",xt:"x-face τ",ys:"y-face σ",yt:"y-face τ",C:"Center",R:"Radius",s1:"σ₁",s2:"σ₂",tp:"θp1",tpd:"θp1 direction",tm:"τmax",sa:"Normal stress on max-shear planes",ts:"θs",tsd:"θs direction",rx:"σx'",ry:"σy'",rt:"τx'y'"};
+  $("fb"+n).innerHTML=`<div class="reveal"><b>Answers:</b> ${FIELDS[n].map(k=>`${lab[k]} = ${typeof ans(k)==="number"?fmt(ans(k))+(k==="tp"||k==="ts"?"°":" "+U):ans(k)}`).join("; ")}. Fill them in and click Check to continue, and make sure you see why.</div>`;
+}
+function advance(n){
+  let nx=n+1;if(nx===6&&P.ang===null)nx=7;
+  step=nx;
+  for(let i=3;i<=6;i++)$("c"+i).classList.toggle("locked",i>step||(i===6&&P.ang===null));
+  $("c6").hidden=P.ang===null;
+  if(step>=7){$("done").hidden=false;}
+  const next=$("c"+step);if(next){const f=next.querySelector("input,select");if(f)f.focus();}
+}
+function start(){
+  const sx=val("sx"),sy=val("sy"),t=val("txy");
+  if(sx===null||sy===null||t===null){$("startmsg").innerHTML='<div class="fb">Enter σx, σy and τxy (use 0 if a stress is zero).</div>';return;}
+  U=$("units").value;const ang=val("ang");
+  P=solve(sx,sy,t,ang===null?NaN:ang,$("angdir").value);
+  step=2;tries={};$("startmsg").innerHTML="";
+  document.querySelectorAll("#work input").forEach(i=>i.value="");document.querySelectorAll("#work select").forEach(s=>s.value="");
+  document.querySelectorAll(".st").forEach(s=>s.innerHTML="");for(let i=2;i<=6;i++)$("fb"+i).innerHTML="";
+  for(let i=3;i<=6;i++)$("c"+i).classList.add("locked");
+  $("c6").hidden=P.ang===null;$("done").hidden=true;
+  if(P.ang!==null)$("c6note").innerHTML=`Find the stresses on an element rotated θ = ${fmt(Math.abs(P.ang))}° ${P.ang>0?"counterclockwise":"clockwise"} from the x-axis.`;
+  $("work").hidden=false;drawElement();drawPlot();$("xs").focus();
+}
+$("start").onclick=start;
+$("rand").onclick=()=>{const r=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+  $("sx").value=r(-12,20)*5;$("sy").value=r(-15,12)*5;let t=r(-8,8)*5;if(t===0)t=25;$("txy").value=t;
+  $("units").value="MPa";$("ang").value=Math.random()<0.6?[15,20,25,30,40,45,60][r(0,6)]:"";$("angdir").value=Math.random()<0.5?"Counterclockwise":"Clockwise";start();};
+document.addEventListener("click",e=>{const c=e.target.closest("[data-check]");if(c)check(+c.dataset.check);});
+document.addEventListener("input",e=>{if(e.target.dataset&&e.target.dataset.k)drawPlot();});
+document.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.dataset&&e.target.dataset.k){const card=e.target.closest(".card");const b=card&&card.querySelector("[data-check]");if(b)b.click();}});
+</script>
+</body>
+</html>
