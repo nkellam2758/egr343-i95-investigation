@@ -218,7 +218,7 @@ const blankTop=()=>({h:"",cards:[],type:"",fix:""});
 const blankMC=()=>({m:"",judge:"",virtue:"",hard:"",wise:""});
 let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},unitSlips:0,
   why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:"",r3:"",
-  chat:{ntsb:[],safety:[],fire:[],eng:[]},coach:{whys:[],moments:[]},aiFail:false,test:{}};
+  chat:{ntsb:[],safety:[],fire:[],eng:[]},coach:{whys:[],moments:[]},aiFail:false,test:{},time:{}};
 try{
   const s=localStorage.getItem(KEY);
   if(s)S=Object.assign(S,JSON.parse(s));
@@ -785,6 +785,10 @@ function reportText(){
   t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
   t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, d=${p.d} in, bf=${p.bf} in, tf=${p.tf} in, tw=${p.tw} in, T=${p.T} C\n  Mmax (given)=${fmt(p.M,4)} kip-ft, c=${S.lab.pC} in, I=${S.lab.pI} in^4, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
   t+=`Problem 2: sx=${p.sx}, sy=${p.sy}, txy=${p.tau} ksi\n  center=${S.lab.mC}, R=${S.lab.mR}, s1=${S.lab.m1}, s2=${S.lab.m2}, theta_p1=${S.lab.mT} deg ${S.lab.mD}, tmax=${S.lab.mX}, kyFy=${S.lab.mY} ksi, yields? ${S.lab.mQ}  [attempts: ${S.tries.b||0}]\n  Unit slips caught: ${S.unitSlips||0}\n\n`;
+  const tm=S.time||{},tot=STAGES.reduce((a,[k])=>a+(tm[k]||0),0);
+  t+=`ACTIVE TIME IN THE GAME: ${hm(tot)} (approximate; idle stretches over 5 minutes aren't counted)\n  ${STAGES.filter(([k])=>tm[k]).map(([k,l])=>`${l.replace(/^\d+\.\s/,"")}: ${hm(tm[k])}`).join("; ")}\n`;
+  if(tm._start)t+=`  First active: ${new Date(tm._start).toLocaleString()}; last active: ${new Date(tm._last).toLocaleString()}\n`;
+  t+=`\n`;
   t+=`Handwritten work: ${["a","b"].map(p=>`${PROB[p]}: ${FILES.filter(f=>f.prob===p).length} file(s)`).join("; ")} (attached at the end of this PDF)\n\n`;
   t+=`5 WHYS\nProblem: The northbound I-95 overpass collapsed.\n`;S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
   t+=`\nMOMENTS OF CHOICE\n`;
@@ -982,6 +986,21 @@ function route(){
 window.addEventListener("hashchange",route);
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();}catch(e){}
 loadFiles().then(route);
+
+/* ---- Active-time tracking: counts time the page is open AND in use. ----
+   Idle stretches (no clicks, typing or scrolling) longer than 5 minutes aren't counted;
+   on the video step the limit is 20 minutes, since watching doesn't involve clicking. */
+let lastAct=Date.now();
+["mousedown","keydown","scroll","touchstart","input","mousemove"].forEach(ev=>window.addEventListener(ev,()=>{lastAct=Date.now();},{passive:true,capture:true}));
+setInterval(()=>{
+  if(location.hash==="#checker"||document.visibilityState!=="visible")return;
+  const limit=(S.stage==="video"?20:5)*60000, inVideo=document.activeElement&&document.activeElement.tagName==="IFRAME";
+  if(Date.now()-lastAct>limit&&!inVideo)return;
+  S.time=S.time||{};S.time[S.stage]=(S.time[S.stage]||0)+15;
+  if(!S.time._start)S.time._start=new Date().toISOString();
+  S.time._last=new Date().toISOString();save();
+},15000);
+function hm(sec){const m=Math.round(sec/60);return m<60?`${m} min`:`${Math.floor(m/60)} h ${m%60} min`;}
 </script>
 </body>
 </html>
