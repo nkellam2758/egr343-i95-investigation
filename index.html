@@ -276,6 +276,16 @@ async function askCoach(sec){
   busy=null;save();render();
 }
 function alertBox(msg){S._alert=msg;}
+/* Log of every question the student has asked, across all characters. */
+function logHTML(current){
+  const who=PEOPLE.filter(x=>x.id!==current&&(S.chat[x.id]||[]).length);
+  if(!who.length)return "";
+  return `<div class="card"><h3 style="margin-top:0">Your interview log</h3>
+  <p class="note" style="margin-top:0">Your questions and answers from the other interviews.</p>
+  ${who.map(x=>{const t=(S.test||{})[x.id];const h=t&&hypById(t.h);
+    return `<details open style="margin:8px 0"><summary style="cursor:pointer;font-weight:700;color:var(--maroon)">${esc(x.name)}, ${esc(x.role)}</summary>
+    ${h?`<p class="note" style="margin:4px 0">Testing your guess: <i>${esc(h.t)}</i></p>`:""}${bubbles(S.chat[x.id])}</details>`;}).join("")}</div>`;
+}
 function testHTML(pid){
   const p=PEOPLE.find(x=>x.id===pid);const t=(S.test||{})[pid];
   if(t&&t.done){const h=hypById(t.h);
@@ -488,7 +498,7 @@ function vInt(){
   ${!testDone(p.id)?"":p.qs.map((q,i)=>{const k=p.id+i;return `<button class="q ${S.asked[k]?"asked":""}" id="q_${k}" onclick="ask('${p.id}',${i})"><span aria-hidden="true">${S.asked[k]?"✓ ":"❓ "}</span>${S.asked[k]?'<span class="sr-only">Asked: </span>':""}${esc(q[0])}</button>${S.asked[k]?`<div class="say">${esc(q[1])} ${listenBtn(q[1])}</div>${evHTML(q[2],CARDS[q[2]])}`:""}`}).join("")}
   ${chatHTML(p.id)}
   </div>
-  <div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
+  ${logHTML(p.id)}<div class="card"><h3 style="margin-top:0">Evidence notebook</h3>${legend}${S.cards.map(c=>evHTML(c,CARDS[c])).join("")}</div>${next()}`;
 }
 function ask(pid,i){S.asked[pid+i]=1;give(PEOPLE.find(x=>x.id===pid).qs[i][2]);save();render();}
 
