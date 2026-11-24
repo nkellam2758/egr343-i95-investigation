@@ -185,7 +185,7 @@ function params(name){
   const c=d/2;
   const M=w*L*L/8;                                           // kip-ft
   const I=Math.round(M*12*c/(24+r()*6)/100)*100;             // in^4
-  const T=[600,650,700][Math.floor(r()*3)];
+  const T=[650,750][Math.floor(r()*2)];   // always halfway between table entries, so everyone interpolates
   const sx=12+Math.floor(r()*9);                             // ksi
   const sy=-(2+Math.floor(r()*5));                           // ksi
   const tau=(r()<0.5?-1:1)*(4+Math.floor(r()*6));            // ksi
@@ -539,6 +539,26 @@ function beamSVG(p){
    <text x="55" y="214" text-anchor="middle" font-size="14" font-style="italic">I = ${p.I.toLocaleString()} in⁴</text>
   </g></svg>`;
 }
+function vmSVG(p){
+  const V=p.RA, M=p.M, x0=60, x1=460, W=x1-x0;
+  const vy=70, vs=40/V, my=230, ms=70/M;          // baselines and scales
+  let path=`M${x0},${my}`;for(let i=1;i<=40;i++){const x=i/40;path+=` L${x0+W*x},${my-ms*(p.w*p.L*p.L/2)*x*(1-x)}`;}
+  return `<svg class="fig" viewBox="0 0 520 290" role="img" aria-label="Shear and moment diagrams. Shear V varies linearly from plus ${fmt(V,4)} kips at A to zero at midspan to minus ${fmt(V,4)} kips at B. Bending moment M is a parabola that is zero at both supports and reaches its maximum, ${fmt(M,4)} kip-feet, at midspan, x = ${p.L/2} feet." style="color:#191919">
+   <text x="12" y="${vy-48}" font-size="14" font-weight="700">V (kip)</text>
+   <line x1="${x0}" y1="${vy}" x2="${x1+20}" y2="${vy}" stroke="#555"/>
+   <polygon points="${x0},${vy} ${x0},${vy-40} ${x1},${vy+40} ${x1},${vy}" fill="#e3f2fd" stroke="#1565c0" stroke-width="2"/>
+   <text x="${x0+6}" y="${vy-44}" font-size="13" fill="#1565c0">+${fmt(V,4)}</text>
+   <text x="${x1-6}" y="${vy+56}" font-size="13" fill="#1565c0" text-anchor="end">−${fmt(V,4)}</text>
+   <text x="${x0+W/2+10}" y="${vy-10}" font-size="12" fill="#555">V = 0 at midspan</text>
+   <text x="12" y="${my-82}" font-size="14" font-weight="700">M (kip·ft)</text>
+   <line x1="${x0}" y1="${my}" x2="${x1+20}" y2="${my}" stroke="#555"/>
+   <path d="${path} Z" fill="#fdecee" stroke="#8C1D40" stroke-width="2"/>
+   <line x1="${x0+W/2}" y1="${my}" x2="${x0+W/2}" y2="${my-70}" stroke="#8C1D40" stroke-dasharray="4 3"/>
+   <text x="${x0+W/2}" y="${my-76}" font-size="13" fill="#8C1D40" text-anchor="middle" font-weight="700">M<tspan font-size="10" dy="3">max</tspan><tspan dy="-3"> = ${fmt(M,4)}</tspan></text>
+   <text x="${x0}" y="${my+18}" font-size="12" text-anchor="middle">A</text><text x="${x1}" y="${my+18}" font-size="12" text-anchor="middle">B</text>
+   <text x="${x0+W/2}" y="${my+18}" font-size="12" text-anchor="middle">x = ${p.L/2} ft</text>
+  </svg>`;
+}
 function elementSVG(p){
   const a=(x1,y1,x2,y2,col)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${col}" stroke-width="2.2" marker-end="url(#${MK[col]||"ah"})"/>`;
   const R="#b00020",B="#1565c0",Gc="#2e7d32";let s="";
@@ -603,14 +623,17 @@ function vLab(){
   <div class="card"><h3 style="margin-top:0">Problem 1: Bending in a fire-heated girder</h3>
   ${beamSVG(p)}
   <p>Model one northbound girder as a <b>simply supported beam</b> (pin at A, roller at B) with span <b>L = ${p.L} ft</b> and uniform load <b>w = ${p.w} kip/ft</b>. The cross-section has moment of inertia <b>I = ${p.I.toLocaleString()} in⁴</b> about the neutral axis, and <b>c = ${p.c} in</b> from the neutral axis to the outer fiber. At room temperature the steel's yield strength is <b>F<sub>y</sub> = 50 ksi</b>. Assume the fire heated the girder to <b>${p.T}°C</b>.</p>
+  <p><b>Given:</b> the shear and moment diagrams for this beam are below. The maximum bending moment is <b>M<sub>max</sub> = ${fmt(p.M,4)} kip·ft</b>, at midspan.</p>
+  ${vmSVG(p)}
   <p>Use <b>σ<sub>max</sub> = Mc/I</b>. In a fire, steel's yield strength drops to <b>k<sub>y</sub>·F<sub>y</sub></b>. Interpolate linearly:</p>
   <table><tr><th>T (°C)</th>${Object.keys(KY).map(t=>`<td>${t}</td>`).join("")}</tr><tr><th>k<sub>y</sub></th>${Object.values(KY).map(k=>`<td>${k.toFixed(2)}</td>`).join("")}</tr></table>
-  ${labRow("pR","1. Reaction at A, A<sub>y</sub>","kip")}
-  ${labRow("pM","2. Maximum bending moment, M<sub>max</sub> (draw your V and M diagrams)","kip·ft")}
-  ${labRow("pS","3. Maximum bending stress, σ<sub>max</sub> = Mc/I","ksi")}
-  ${labRow("pF1","4. Factor of safety against yield at room temperature","")}
-  ${labRow("pK",`5. k<sub>y</sub> at ${p.T}°C`,"")}
-  ${labRow("pF2",`6. Factor of safety against yield at ${p.T}°C`,"")}
+  <div class="say"><b>How to interpolate:</b> if your temperature falls between two table entries, take the value partway between them.<br>
+  <i>Example:</i> 450°C is halfway between 400°C (k<sub>y</sub> = 1.00) and 500°C (k<sub>y</sub> = 0.78), so<br>
+  k<sub>y</sub> = 1.00 + ½ × (0.78 − 1.00) = 1.00 − 0.11 = <b>0.89</b>.</div>
+  ${labRow("pS","1. Maximum bending stress, σ<sub>max</sub> = Mc/I","ksi")}
+  ${labRow("pF1","2. Factor of safety against yield at room temperature","")}
+  ${labRow("pK",`3. k<sub>y</sub> at ${p.T}°C`,"")}
+  ${labRow("pF2",`4. Factor of safety against yield at ${p.T}°C`,"")}
   <p><button class="btn" id="chkA" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
   <div aria-live="polite">${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}</div>
   ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>${uploadHTML("a")}`:""}
@@ -629,7 +652,7 @@ function vLab(){
   ${labRow("mT","5. θ<sub>p1</sub>, magnitude","°")}
   ${labRow("mD","6. θ<sub>p1</sub>, direction","",["Clockwise","Counterclockwise"])}
   ${labRow("mX","7. Maximum in-plane shear stress, τ<sub>max</sub>","ksi")}
-  ${labRow("mY",`8. Yield strength at ${p.T}°C, k<sub>y</sub>·F<sub>y</sub>`,"ksi")}
+  ${labRow("mY",`8. Yield strength at ${p.T}°C, k<sub>y</sub>·F<sub>y</sub> (use your k<sub>y</sub> from Problem 1)`,"ksi")}
   ${labRow("mQ","9. By this simple check (σ<sub>1</sub> vs. k<sub>y</sub>·F<sub>y</sub>), does the web yield?","",["Yes","No"])}
   <p><button class="btn" id="chkB" onclick="checkLab('b')">Check Problem 2</button> <span class="note">Attempts: ${S.tries.b||0}</span></p>
   <div aria-live="polite">${(S.lab.bfb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}</div>
@@ -641,16 +664,12 @@ function checkLab(part){
   const p=P();S.tries[part]=(S.tries[part]||0)+1;const L=S.lab,fb=[];let all=true;
   const mark=(k,ok)=>{L[k+"_ok"]=ok;if(!ok)all=false;};
   if(part==="a"){
-    mark("pR",near(L.pR,p.RA));if(!L.pR_ok&&near(L.pR,p.w*p.L))fb.push("Reaction: that's the total load wL. By symmetry, each support carries half.");
-    mark("pM",near(L.pM,p.M));
-    if(!L.pM_ok){if(near(L.pM,p.w*p.L*p.L/4)||near(L.pM,p.w*p.L*p.L/2))fb.push("Moment: check your M diagram. For a uniform load on a simply supported beam, M<sub>max</sub> is at midspan and equals the area under the V diagram from A to midspan.");
-      else if(near(L.pM,p.M*12))fb.push("Moment: this question asks for kip·ft. Convert to kip·in in the next step.");}
     mark("pS",near(L.pS,p.sig));
     if(!L.pS_ok){if(near(L.pS,p.sig/12)){fb.push("Units! M is in kip·ft, but c is in inches and I is in in⁴. Convert M to kip·in (×12) before using σ = Mc/I. Think of this as your pre-trip check.");S.unitSlips=(S.unitSlips||0)+1;}
       else if(near(L.pS,p.sig*2))fb.push("Stress: c is measured from the neutral axis to the outer fiber, which is half the depth.");
       else if(near(L.pS,p.sig*1000)){fb.push("Units: that looks like psi. Answer in ksi.");S.unitSlips=(S.unitSlips||0)+1;}}
     mark("pF1",near(L.pF1,p.FS20));
-    mark("pK",near(L.pK,p.ky));if(!L.pK_ok&&p.T===650&&(near(L.pK,0.47)||near(L.pK,0.23)))fb.push("k<sub>y</sub>: 650°C falls between two table entries, so interpolate.");
+    mark("pK",near(L.pK,p.ky));if(!L.pK_ok){const lo=Math.floor(p.T/100)*100,hi=lo+100;if(near(L.pK,KY[lo])||near(L.pK,KY[hi]))fb.push(`k<sub>y</sub>: ${p.T}°C is halfway between ${lo}°C and ${hi}°C, so k<sub>y</sub> is halfway between ${KY[lo].toFixed(2)} and ${KY[hi].toFixed(2)}. See the example under the table.`);}
     mark("pF2",near(L.pF2,p.FST));if(!L.pF2_ok&&near(L.pF2,p.FS20))fb.push("Hot FS: at high temperature the yield strength is k<sub>y</sub>·F<sub>y</sub>, not F<sub>y</sub>.");
   }else{
     mark("mC",near(L.mC,p.avg));
@@ -667,7 +686,7 @@ function checkLab(part){
       else if(near(L.mT,90-p.thMag))fb.push("Angle: measure from the x-face point to σ<sub>1</sub> on the circle (2θ<sub>p1</sub>), then halve it.");}
     mark("mD",L.mD===p.thDir);if(!L.mD_ok&&L.mD)fb.push("Direction: on Hibbeler's circle (τ positive downward), the element rotates in the same direction you rotate on the circle from the x-face point to σ<sub>1</sub>.");
     mark("mX",near(L.mX,p.Rm));if(!L.mX_ok&&near(L.mX,p.s1))fb.push("τ<sub>max</sub>: the maximum in-plane shear stress equals the radius of the circle.");
-    mark("mY",near(L.mY,p.Fyh));if(!L.mY_ok&&near(L.mY,50))fb.push("Hot yield strength: multiply F<sub>y</sub> by k<sub>y</sub> at your temperature (same as Problem 1).");
+    mark("mY",near(L.mY,p.Fyh));if(!L.mY_ok&&near(L.mY,50))fb.push("Hot yield strength: use the k<sub>y</sub> you found in Problem 1 and multiply it by F<sub>y</sub> = 50 ksi.");
     mark("mQ",L.mQ===p.yields);
   }
   L[part+"fb"]=fb;if(all){S.labDone[part]=true;}
@@ -732,7 +751,7 @@ function reportText(){
   t+=`FIRST LIST (from the video), with verdicts after the interviews\n`;
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t}  ->  ${h.s}\n`;});
   t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
-  t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in^4, c=${p.c} in, T=${p.T} C\n  Ay=${S.lab.pR} kip, Mmax=${S.lab.pM} kip-ft, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
+  t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in^4, c=${p.c} in, T=${p.T} C\n  Mmax (given)=${fmt(p.M,4)} kip-ft, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
   t+=`Problem 2: sx=${p.sx}, sy=${p.sy}, txy=${p.tau} ksi\n  center=${S.lab.mC}, R=${S.lab.mR}, s1=${S.lab.m1}, s2=${S.lab.m2}, theta_p1=${S.lab.mT} deg ${S.lab.mD}, tmax=${S.lab.mX}, kyFy=${S.lab.mY} ksi, yields? ${S.lab.mQ}  [attempts: ${S.tries.b||0}]\n  Unit slips caught: ${S.unitSlips||0}\n\n`;
   t+=`Handwritten work: ${["a","b"].map(p=>`${PROB[p]}: ${FILES.filter(f=>f.prob===p).length} file(s)`).join("; ")} (attached at the end of this PDF)\n\n`;
   t+=`5 WHYS\nProblem: The northbound I-95 overpass collapsed.\n`;S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
@@ -796,7 +815,7 @@ async function handleUpload(part,list){
 function uploadHTML(part){
   const mine=FILES.filter(f=>f.prob===part);const um=S._upmsg&&S._upmsg.part===part?S._upmsg.msgs:[];
   return `<div class="chat"><h4>Upload your work for ${PROB[part]}</h4>
-  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your free-body diagram and V and M diagrams"}. Upload every page. These go into the PDF you submit.</p>
+  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your σ = Mc/I calculation and factor of safety"}. Upload every page. These go into the PDF you submit.</p>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">${mine.map(f=>`<div style="border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;text-align:center;font-size:.75rem;max-width:130px">${f.type==="jpg"?`<img src="${f.data}" alt="${esc(f.name)}" style="height:90px;display:block;margin:0 auto 2px">`:`<div style="font-size:2rem">📄</div>`}${esc(f.name.slice(0,22))}<br><button class="btn alt sm" data-rm="${f.id}">Remove</button></div>`).join("")}</div>
   ${mine.length?`<p class="ok msg" style="margin:0">✓ ${mine.length} file${mine.length>1?"s":""} uploaded. Add more pages if needed.</p>`:`<p class="bad msg" style="margin:0">Required before you can continue.</p>`}
   ${um.map(m=>`<div class="fb">${esc(m)}</div>`).join("")}
@@ -920,7 +939,7 @@ function vChecker(){
 function chk(n){
   const o=document.getElementById("co");if(!n.trim()){o.innerHTML="";return;}const p=params(n);
   o.innerHTML=`<p>Expected code: <span class="code">${code(n)}</span></p>
-  <p><b>Problem 1</b> (L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in⁴, c=${p.c} in, T=${p.T}°C): A<sub>y</sub>=${fmt(p.RA,4)} kip, M=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, k<sub>y</sub>=${fmt(p.ky)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
+  <p><b>Problem 1</b> (L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in⁴, c=${p.c} in, T=${p.T}°C): M<sub>max</sub> (given)=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, k<sub>y</sub>=${fmt(p.ky)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
   <p><b>Problem 2</b> (σx=${p.sx}, σy=${p.sy}, τxy=${p.tau} ksi): center=${fmt(p.avg)}, R=${fmt(p.Rm,4)}, σ₁=${fmt(p.s1,4)}, σ₂=${fmt(p.s2,4)}, θp1=${fmt(p.thMag)}° ${p.thDir}, τmax=${fmt(p.Rm,4)}, k<sub>y</sub>F<sub>y</sub>=${fmt(p.Fyh)} ksi, yields? ${p.yields}</p>`;
 }
 
