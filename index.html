@@ -181,18 +181,28 @@ function params(name){
   const r=rng(fnv("i95d|"+norm(name)));
   const L=60+2*Math.floor(r()*11);                           // ft
   const w=Math.round((2.0+0.1*Math.floor(r()*11))*10)/10;    // kip/ft
-  const d=[24,27,30,33,36][Math.floor(r()*5)];               // in
-  const c=d/2;
+  const d0=[24,27,30,33,36][Math.floor(r()*5)];              // in, preferred depth
   const M=w*L*L/8;                                           // kip-ft
-  const I=Math.round(M*12*c/(24+r()*6)/100)*100;             // in^4
+  const sigT=24+r()*6;                                       // ksi, aims for a realistic stress
   const T=[650,750][Math.floor(r()*2)];   // always halfway between table entries, so everyone interpolates
   const sx=12+Math.floor(r()*9);                             // ksi
   const sy=-(2+Math.floor(r()*5));                           // ksi
   const tau=(r()<0.5?-1:1)*(4+Math.floor(r()*6));            // ksi
+  /* symmetric I-shape: flange width bf, flange thickness tf, web thickness tw, depth d */
+  const tf0=[1,1.25,1.5][Math.floor(r()*3)], tw=[0.5,0.625,0.75][Math.floor(r()*3)];
+  /* pick a depth and flange thickness (starting from the preferred ones) that give a realistic flange width, 8 to 18 in */
+  const bfFor=(dd,t)=>{const hh=dd-2*t,It=M*12*(dd/2)/sigT;return (12*It-tw*hh**3)/(dd**3-hh**3);};
+  const ds=[d0,24,27,30,33,36,40,44],tfs=[tf0,1,1.25,1.5,1.75,2];
+  let d=d0,tf=tf0;
+  outer:for(const dd of ds)for(const t of tfs){const b=bfFor(dd,t);if(b>=8&&b<=18){d=dd;tf=t;break outer;}}
+  const c=d/2,h=d-2*tf;
+  const bf=Math.min(18,Math.max(8,Math.round(bfFor(d,tf)*2)/2));
+  const I=(bf*d**3-(bf-tw)*h**3)/12;
+  const Isolid=bf*d**3/12, InoPA=2*bf*tf**3/12+tw*h**3/12;
   const RA=w*L/2, sig=M*12*c/I, FS20=50/sig, ky=interp(KY,T), FST=50*ky/sig, Fyh=50*ky;
   const avg=(sx+sy)/2, Rm=Math.hypot((sx-sy)/2,tau), s1=avg+Rm, s2=avg-Rm;
   const th=0.5*Math.atan2(tau,(sx-sy)/2)*180/Math.PI;        // + = CCW (Hibbeler)
-  return {L,w,d,c,I,T,M,RA,sig,FS20,ky,FST,Fyh,sx,sy,tau,avg,Rm,s1,s2,th,thMag:Math.abs(th),thDir:th>0?"Counterclockwise":"Clockwise",yields:s1>Fyh?"Yes":"No"};
+  return {L,w,d,c,I,bf,tf,tw,h,Isolid,InoPA,T,M,RA,sig,FS20,ky,FST,Fyh,sx,sy,tau,avg,Rm,s1,s2,th,thMag:Math.abs(th),thDir:th>0?"Counterclockwise":"Clockwise",yields:s1>Fyh?"Yes":"No"};
 }
 function code(name){
   const p=params(name);const h=fnv("I95d1|"+norm(name)+"|"+p.L+p.w+p.I+p.T+p.sx+p.sy+p.tau);
@@ -519,7 +529,7 @@ const DEFS=`<defs>${Object.entries(MK).map(([c,id])=>`<marker id="${id}" viewBox
 function beamSVG(p){
   let arrows="";for(let i=0;i<=10;i++){const x=60+40*i;arrows+=`<line x1="${x}" y1="52" x2="${x}" y2="94" stroke="currentColor" stroke-width="1.6" marker-end="url(#ah)"/>`;}
   let flames="";[200,235,270,305].forEach((x,i)=>{flames+=`<path d="M${x},176 q-12,-18 0,-34 q4,12 10,6 q8,14 -2,28 z" fill="#f57c00" opacity=".75"/>`;});
-  return `<svg class="fig" viewBox="0 0 720 250" role="img" aria-label="Simply supported girder: pin support at A on the left, roller support at B on the right, span L = ${p.L} feet, carrying a uniform downward load w = ${p.w} kips per foot along its full length, with fire beneath it. Beside it, an I-shaped cross-section with a horizontal neutral axis through its middle; c = ${p.c} inches is the distance from the neutral axis to the top fiber, and I = ${p.I} inches to the fourth." style="color:#191919">${DEFS}
+  return `<svg class="fig" viewBox="0 0 720 250" role="img" aria-label="Simply supported girder: pin support at A on the left, roller support at B on the right, span L = ${p.L} feet, carrying a uniform downward load w = ${p.w} kips per foot along its full length, with fire beneath it. Beside it, an I-shaped cross-section with a horizontal neutral axis through its middle." style="color:#191919">${DEFS}
   <line x1="60" y1="52" x2="460" y2="52" stroke="currentColor" stroke-width="1.6"/>${arrows}
   <text x="260" y="40" text-anchor="middle" font-size="16" font-style="italic">w = ${p.w} kip/ft</text>
   <rect x="60" y="98" width="400" height="18" fill="#9e9e9e" stroke="currentColor"/>
@@ -532,12 +542,25 @@ function beamSVG(p){
   <g transform="translate(540,30)">
    <rect x="0" y="0" width="110" height="14" fill="#bdbdbd" stroke="currentColor"/><rect x="49" y="14" width="12" height="122" fill="#bdbdbd" stroke="currentColor"/><rect x="0" y="136" width="110" height="14" fill="#bdbdbd" stroke="currentColor"/>
    <line x1="-14" y1="75" x2="124" y2="75" stroke="#1565c0" stroke-width="1.4" stroke-dasharray="6 4"/><text x="-16" y="79" text-anchor="end" font-size="13" fill="#1565c0">N.A.</text>
-   <line x1="140" y1="75" x2="140" y2="0" stroke="currentColor" stroke-width="1.3" marker-start="url(#ah)" marker-end="url(#ah)"/>
-   <text x="146" y="42" font-size="15" font-style="italic">c</text>
    <text x="55" y="176" text-anchor="middle" font-size="13">Cross-section</text>
-   <text x="55" y="196" text-anchor="middle" font-size="14" font-style="italic">c = ${p.c} in</text>
-   <text x="55" y="214" text-anchor="middle" font-size="14" font-style="italic">I = ${p.I.toLocaleString()} in⁴</text>
+   <text x="55" y="196" text-anchor="middle" font-size="13">(dimensions below)</text>
   </g></svg>`;
+}
+function sectionSVG(p){
+  const X0=150,Y0=30,B=150,TF=18,TW=16,D=200,cx=X0+B/2;
+  return `<svg class="fig" viewBox="0 0 470 280" style="max-width:520px;display:block;margin:0 auto" role="img" aria-label="Symmetric I-shaped cross-section. Overall depth d = ${p.d} inches, flange width b_f = ${p.bf} inches, flange thickness t_f = ${p.tf} inches, web thickness t_w = ${p.tw} inches. The neutral axis is at mid-depth. Not to scale." style="color:#191919">${DEFS}
+   <rect x="${X0}" y="${Y0}" width="${B}" height="${TF}" fill="#bdbdbd" stroke="#191919"/>
+   <rect x="${cx-TW/2}" y="${Y0+TF}" width="${TW}" height="${D-2*TF}" fill="#bdbdbd" stroke="#191919"/>
+   <rect x="${X0}" y="${Y0+D-TF}" width="${B}" height="${TF}" fill="#bdbdbd" stroke="#191919"/>
+   <line x1="${X0-20}" y1="${Y0+D/2}" x2="${X0+B+20}" y2="${Y0+D/2}" stroke="#1565c0" stroke-width="1.4" stroke-dasharray="6 4"/><text x="${X0+B+24}" y="${Y0+D/2+4}" font-size="13" fill="#1565c0">N.A.</text>
+   <line x1="${X0-40}" y1="${Y0}" x2="${X0-40}" y2="${Y0+D}" stroke="#555" marker-start="url(#ah)" marker-end="url(#ah)"/><text x="${X0-48}" y="${Y0+D/2+5}" font-size="15" text-anchor="end" font-style="italic">d = ${p.d} in</text>
+   <line x1="${X0}" y1="${Y0-7}" x2="${X0+B}" y2="${Y0-7}" stroke="#555" marker-start="url(#ah)" marker-end="url(#ah)"/><text x="${cx}" y="${Y0-14}" font-size="15" text-anchor="middle" font-style="italic">b<tspan font-size="11" dy="3">f</tspan><tspan dy="-3"> = ${p.bf} in</tspan></text>
+   <line x1="${X0+B+14}" y1="${Y0}" x2="${X0+B+14}" y2="${Y0+TF}" stroke="#555"/><line x1="${X0+B+8}" y1="${Y0}" x2="${X0+B+20}" y2="${Y0}" stroke="#555"/><line x1="${X0+B+8}" y1="${Y0+TF}" x2="${X0+B+20}" y2="${Y0+TF}" stroke="#555"/>
+   <text x="${X0+B+26}" y="${Y0+TF-2}" font-size="15" font-style="italic">t<tspan font-size="11" dy="3">f</tspan><tspan dy="-3"> = ${p.tf} in</tspan></text>
+   <line x1="${cx+TW/2+40}" y1="${Y0+D*0.72}" x2="${cx+TW/2+2}" y2="${Y0+D*0.72}" stroke="#555" marker-end="url(#ah)"/><line x1="${cx-TW/2-40}" y1="${Y0+D*0.72}" x2="${cx-TW/2-2}" y2="${Y0+D*0.72}" stroke="#555" marker-end="url(#ah)"/>
+   <text x="${cx+TW/2+46}" y="${Y0+D*0.72+5}" font-size="15" font-style="italic">t<tspan font-size="11" dy="3">w</tspan><tspan dy="-3"> = ${p.tw} in</tspan></text>
+   <text x="${cx}" y="${Y0+D+28}" font-size="12" fill="#555" text-anchor="middle">Symmetric about the neutral axis · not to scale</text>
+  </svg>`;
 }
 function vmSVG(p){
   const V=p.RA, M=p.M, x0=60, x1=460, W=x1-x0;
@@ -622,7 +645,8 @@ function vLab(){
 
   <div class="card"><h3 style="margin-top:0">Problem 1: Bending in a fire-heated girder</h3>
   ${beamSVG(p)}
-  <p>Model one northbound girder as a <b>simply supported beam</b> (pin at A, roller at B) with span <b>L = ${p.L} ft</b> and uniform load <b>w = ${p.w} kip/ft</b>. The cross-section has moment of inertia <b>I = ${p.I.toLocaleString()} in⁴</b> about the neutral axis, and <b>c = ${p.c} in</b> from the neutral axis to the outer fiber. At room temperature the steel's yield strength is <b>F<sub>y</sub> = 50 ksi</b>. Assume the fire heated the girder to <b>${p.T}°C</b>.</p>
+  <p>Model one northbound girder as a <b>simply supported beam</b> (pin at A, roller at B) with span <b>L = ${p.L} ft</b> and uniform load <b>w = ${p.w} kip/ft</b>. The cross-section is a <b>symmetric I-shape</b> with the dimensions shown below. At room temperature the steel's yield strength is <b>F<sub>y</sub> = 50 ksi</b>. Assume the fire heated the girder to <b>${p.T}°C</b>.</p>
+  ${sectionSVG(p)}
   <p><b>Given:</b> the shear and moment diagrams for this beam are below. The maximum bending moment is <b>M<sub>max</sub> = ${fmt(p.M,4)} kip·ft</b>, at midspan.</p>
   ${vmSVG(p)}
   <p>Use <b>σ<sub>max</sub> = Mc/I</b>. In a fire, steel's yield strength drops to <b>k<sub>y</sub>·F<sub>y</sub></b>. Interpolate linearly:</p>
@@ -630,10 +654,12 @@ function vLab(){
   <div class="say"><b>How to interpolate:</b> if your temperature falls between two table entries, take the value partway between them.<br>
   <i>Example:</i> 450°C is halfway between 400°C (k<sub>y</sub> = 1.00) and 500°C (k<sub>y</sub> = 0.78), so<br>
   k<sub>y</sub> = 1.00 + ½ × (0.78 − 1.00) = 1.00 − 0.11 = <b>0.89</b>.</div>
-  ${labRow("pS","1. Maximum bending stress, σ<sub>max</sub> = Mc/I","ksi")}
-  ${labRow("pF1","2. Factor of safety against yield at room temperature","")}
-  ${labRow("pK",`3. k<sub>y</sub> at ${p.T}°C`,"")}
-  ${labRow("pF2",`4. Factor of safety against yield at ${p.T}°C`,"")}
+  ${labRow("pC","1. Distance from the neutral axis to the outer fiber, c","in")}
+  ${labRow("pI","2. Moment of inertia about the neutral axis, I","in⁴")}
+  ${labRow("pS","3. Maximum bending stress, σ<sub>max</sub> = Mc/I","ksi")}
+  ${labRow("pF1","4. Factor of safety against yield at room temperature","")}
+  ${labRow("pK",`5. k<sub>y</sub> at ${p.T}°C`,"")}
+  ${labRow("pF2",`6. Factor of safety against yield at ${p.T}°C`,"")}
   <p><button class="btn" id="chkA" onclick="checkLab('a')">Check Problem 1</button> <span class="note">Attempts: ${S.tries.a||0}</span></p>
   <div aria-live="polite">${(S.lab.afb||[]).map(m=>`<div class="fb">${m}</div>`).join("")}</div>
   ${S.labDone.a?`<div class="msg ok">Unlocked:</div>${evHTML("C1",calcCards().C1)}<p class="note">Think about it: an FS below 1 under ordinary loads means the girder can't carry its own deck and traffic. Compare this with the sagging deck in the drivers' videos.</p>${uploadHTML("a")}`:""}
@@ -664,6 +690,11 @@ function checkLab(part){
   const p=P();S.tries[part]=(S.tries[part]||0)+1;const L=S.lab,fb=[];let all=true;
   const mark=(k,ok)=>{L[k+"_ok"]=ok;if(!ok)all=false;};
   if(part==="a"){
+    mark("pC",near(L.pC,p.c));if(!L.pC_ok&&near(L.pC,p.d))fb.push("c: the shape is symmetric, so the neutral axis is at mid-depth. c is half the depth.");
+    mark("pI",near(L.pI,p.I));
+    if(!L.pI_ok){if(near(L.pI,p.Isolid))fb.push("I: that's I for a solid rectangle b<sub>f</sub> × d. Subtract the two empty spaces beside the web, or add up the flanges and web using the parallel-axis theorem.");
+      else if(near(L.pI,p.InoPA))fb.push("I: don't forget the parallel-axis term A·d<sup>2</sup> for each flange. The flanges sit far from the neutral axis, so that term is most of I.");
+      else fb.push("I: split the shape into two flanges and a web. For each piece, use I = bh<sup>3</sup>/12 + A·d<sup>2</sup>, where d is the distance from that piece's centroid to the neutral axis. Or use b<sub>f</sub>d<sup>3</sup>/12 minus the two empty rectangles beside the web.");}
     mark("pS",near(L.pS,p.sig));
     if(!L.pS_ok){if(near(L.pS,p.sig/12)){fb.push("Units! M is in kip·ft, but c is in inches and I is in in⁴. Convert M to kip·in (×12) before using σ = Mc/I. Think of this as your pre-trip check.");S.unitSlips=(S.unitSlips||0)+1;}
       else if(near(L.pS,p.sig*2))fb.push("Stress: c is measured from the neutral axis to the outer fiber, which is half the depth.");
@@ -706,7 +737,8 @@ function vRCA(){
   ${coachHTML("whys")}</div>
   <div class="card"><h3 style="margin-top:0">Step 3: Moments of choice</h3><p>Virtues aren't labels you stick on people afterward. They show up at moments of choice, when the right action is <i>hard</i>: you're tired, there's a schedule, a check feels routine, or protection costs money. Pick three ⚖ moments from your evidence. Include at least one where a virtue was shown and one where it was missing.</p></div>
   ${S.mc.map((r,i)=>`<div class="rc mc"><h3>Moment ${i+1}</h3>
-    <label>Moment of choice</label><select data-mc="${i}" data-f="m"><option value="">Choose…</option>${ch.map(k=>`<option value="${k}" ${r.m===k?"selected":""}>${k}: ${esc(CARDS[k].who)}: ${esc(CARDS[k].t.slice(0,70))}…</option>`).join("")}</select>
+    <label>Moment of choice</label><select id="mcm${i}" data-mc="${i}" data-f="m"><option value="">Choose…</option>${ch.map(k=>`<option value="${k}" ${r.m===k?"selected":""}>${k}: ${esc(CARDS[k].who)}: ${esc(CARDS[k].t.slice(0,70))}…</option>`).join("")}</select>
+    ${r.m&&CARDS[r.m]?`<div style="margin-top:6px">${evHTML(r.m,CARDS[r.m])}</div>`:""}
     <div class="row"><div><label>Your judgment</label><select data-mc="${i}" data-f="judge"><option value="">Choose…</option>${JUDGE.map(o=>`<option ${r.judge===o?"selected":""}>${o}</option>`).join("")}</select></div>
     <div><label>Which virtue was shown or missing?</label><select data-mc="${i}" data-f="virtue"><option value="">Choose…</option>${VIRTUES.map(o=>`<option ${r.virtue===o?"selected":""}>${o}</option>`).join("")}</select></div></div>
     <label>What made the right action hard here? (pressures, routines, incentives, uncertainty)</label><textarea data-mc="${i}" data-f="hard">${esc(r.hard)}</textarea>
@@ -751,7 +783,7 @@ function reportText(){
   t+=`FIRST LIST (from the video), with verdicts after the interviews\n`;
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t}  ->  ${h.s}\n`;});
   t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
-  t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in^4, c=${p.c} in, T=${p.T} C\n  Mmax (given)=${fmt(p.M,4)} kip-ft, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
+  t+=`\nLAB BENCH (your parameters)\nProblem 1: L=${p.L} ft, w=${p.w} kip/ft, d=${p.d} in, bf=${p.bf} in, tf=${p.tf} in, tw=${p.tw} in, T=${p.T} C\n  Mmax (given)=${fmt(p.M,4)} kip-ft, c=${S.lab.pC} in, I=${S.lab.pI} in^4, sigma=${S.lab.pS} ksi, FS(20C)=${S.lab.pF1}, ky=${S.lab.pK}, FS(${p.T}C)=${S.lab.pF2}  [attempts: ${S.tries.a||0}]\n`;
   t+=`Problem 2: sx=${p.sx}, sy=${p.sy}, txy=${p.tau} ksi\n  center=${S.lab.mC}, R=${S.lab.mR}, s1=${S.lab.m1}, s2=${S.lab.m2}, theta_p1=${S.lab.mT} deg ${S.lab.mD}, tmax=${S.lab.mX}, kyFy=${S.lab.mY} ksi, yields? ${S.lab.mQ}  [attempts: ${S.tries.b||0}]\n  Unit slips caught: ${S.unitSlips||0}\n\n`;
   t+=`Handwritten work: ${["a","b"].map(p=>`${PROB[p]}: ${FILES.filter(f=>f.prob===p).length} file(s)`).join("; ")} (attached at the end of this PDF)\n\n`;
   t+=`5 WHYS\nProblem: The northbound I-95 overpass collapsed.\n`;S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
@@ -815,7 +847,7 @@ async function handleUpload(part,list){
 function uploadHTML(part){
   const mine=FILES.filter(f=>f.prob===part);const um=S._upmsg&&S._upmsg.part===part?S._upmsg.msgs:[];
   return `<div class="chat"><h4>Upload your work for ${PROB[part]}</h4>
-  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your σ = Mc/I calculation and factor of safety"}. Upload every page. These go into the PDF you submit.</p>
+  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your c and I calculation, σ = Mc/I, and factors of safety"}. Upload every page. These go into the PDF you submit.</p>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">${mine.map(f=>`<div style="border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;text-align:center;font-size:.75rem;max-width:130px">${f.type==="jpg"?`<img src="${f.data}" alt="${esc(f.name)}" style="height:90px;display:block;margin:0 auto 2px">`:`<div style="font-size:2rem">📄</div>`}${esc(f.name.slice(0,22))}<br><button class="btn alt sm" data-rm="${f.id}">Remove</button></div>`).join("")}</div>
   ${mine.length?`<p class="ok msg" style="margin:0">✓ ${mine.length} file${mine.length>1?"s":""} uploaded. Add more pages if needed.</p>`:`<p class="bad msg" style="margin:0">Required before you can continue.</p>`}
   ${um.map(m=>`<div class="fb">${esc(m)}</div>`).join("")}
@@ -923,7 +955,7 @@ function wire(){
   m.querySelectorAll("[data-del]").forEach(el=>el.addEventListener("click",()=>{S.hyp=S.hyp.filter(h=>h.id!==el.dataset.del);save();render();}));
   on("[data-lab]",el=>{S.lab[el.dataset.lab]=el.value;save();if(el.dataset.lab==="mC"||el.dataset.lab==="mR")drawMohr();});
   on("[data-why]",el=>{S.why[+el.dataset.why]=el.value;save();refresh();});
-  on("[data-mc]",el=>{S.mc[+el.dataset.mc][el.dataset.f]=el.value;save();refresh();});
+  on("[data-mc]",el=>{S.mc[+el.dataset.mc][el.dataset.f]=el.value;save();if(el.dataset.f==="m")render();else refresh();});
   on("[data-t]",el=>{S.top[+el.dataset.t][el.dataset.f]=el.value;save();refresh();});
   m.querySelectorAll(".rc .chip").forEach(el=>el.addEventListener("click",()=>{
     const rcs=[...m.querySelectorAll(".rc:not(.mc)")];const i=rcs.indexOf(el.closest(".rc"));const a=S.top[i].cards;const id=el.dataset.id;
@@ -939,7 +971,7 @@ function vChecker(){
 function chk(n){
   const o=document.getElementById("co");if(!n.trim()){o.innerHTML="";return;}const p=params(n);
   o.innerHTML=`<p>Expected code: <span class="code">${code(n)}</span></p>
-  <p><b>Problem 1</b> (L=${p.L} ft, w=${p.w} kip/ft, I=${p.I} in⁴, c=${p.c} in, T=${p.T}°C): M<sub>max</sub> (given)=${fmt(p.M,4)} kip·ft, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, k<sub>y</sub>=${fmt(p.ky)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
+  <p><b>Problem 1</b> (L=${p.L} ft, w=${p.w} kip/ft, d=${p.d}, b<sub>f</sub>=${p.bf}, t<sub>f</sub>=${p.tf}, t<sub>w</sub>=${p.tw} in, T=${p.T}°C): M<sub>max</sub> (given)=${fmt(p.M,4)} kip·ft, c=${fmt(p.c,4)} in, I=${fmt(p.I,5)} in⁴, σ=${fmt(p.sig,4)} ksi, FS₂₀=${fmt(p.FS20)}, k<sub>y</sub>=${fmt(p.ky)}, FS<sub>T</sub>=${fmt(p.FST)}</p>
   <p><b>Problem 2</b> (σx=${p.sx}, σy=${p.sy}, τxy=${p.tau} ksi): center=${fmt(p.avg)}, R=${fmt(p.Rm,4)}, σ₁=${fmt(p.s1,4)}, σ₂=${fmt(p.s2,4)}, θp1=${fmt(p.thMag)}° ${p.thDir}, τmax=${fmt(p.Rm,4)}, k<sub>y</sub>F<sub>y</sub>=${fmt(p.Fyh)} ksi, yields? ${p.yields}</p>`;
 }
 
