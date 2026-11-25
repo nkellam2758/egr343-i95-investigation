@@ -218,7 +218,7 @@ const blankTop=()=>({h:"",cards:[],type:"",fix:""});
 const blankMC=()=>({m:"",judge:"",virtue:"",hard:"",wise:""});
 let S={stage:"video",name:"",hyp:[],nextId:1,locked:false,asked:{},person:"ntsb",cards:[],lab:{},tries:{},labDone:{a:false,b:false},unitSlips:0,
   why:["","","","",""],mc:[blankMC(),blankMC(),blankMC()],top:[blankTop(),blankTop(),blankTop()],r1:"",r2:"",r3:"",
-  chat:{ntsb:[],safety:[],fire:[],eng:[]},coach:{whys:[],moments:[]},aiFail:false,test:{},time:{}};
+  chat:{ntsb:[],safety:[],fire:[],eng:[]},coach:{whys:[],moments:[]},aiFail:false,test:{},time:{},quality:{checks:0,first:null,latest:null,hash:""}};
 try{
   const s=localStorage.getItem(KEY);
   if(s)S=Object.assign(S,JSON.parse(s));
@@ -286,6 +286,18 @@ async function askCoach(sec){
   busy=null;save();render();
 }
 function alertBox(msg){S._alert=msg;}
+
+/* ---- Filler check: catches random words, repetition and keyboard mashing (no AI). ---- */
+const FUNC=new Set("the a an and or to of in on at for with is was were be been are it its that this these those because so but not no as by from they them he she him her we us i my me his their there then than if when which who what how why would could should can will did do does had has have more most very also just only into about after before over under".split(" "));
+function looksLikeFiller(t){
+  const w=(t||"").toLowerCase().match(/[a-z']+/g)||[];
+  if(w.length<8)return false;
+  if(new Set(w).size/w.length<0.45)return true;                          // lots of repetition
+  if(w.filter(x=>!/[aeiouy]/.test(x)).length/w.length>0.25)return true;   // keyboard mashing
+  if(w.length>=12&&w.filter(x=>FUNC.has(x)).length/w.length<0.08)return true; // a list of words, not sentences
+  return false;
+}
+const FILLER_MSG="doesn't look like real sentences yet. Write it in your own words";
 /* Log of every question the student has asked, across all characters. */
 function logHTML(current){
   const who=PEOPLE.filter(x=>x.id!==current&&(S.chat[x.id]||[]).length);
@@ -352,7 +364,7 @@ function done(st){
     case"update":return vidHyps().filter(okHyp).every(h=>!!h.s)&&intHyps().filter(okHyp).length>=2&&intHyps().every(h=>okHyp(h)||!h.t.trim());
     case"lab":return S.labDone.a&&S.labDone.b&&hasUp("a")&&hasUp("b");
     case"rca":return rcaErrors().length===0;
-    case"reflect":return words(S.r1)>=40&&words(S.r2)>=40&&words(S.r3)>=40;
+    case"reflect":return ["r1","r2","r3"].every(k=>words(S[k])>=40&&!looksLikeFiller(S[k]));
     case"report":return false;
   }
 }
@@ -369,12 +381,15 @@ const choiceIds=()=>S.cards.filter(k=>CARDS[k].k==="choice");
 function rcaErrors(){
   const e=[];
   S.why.forEach((w,i)=>{if(words(w)<4)e.push(`5 Whys: answer why #${i+1} (at least 4 words).`);});
+  if(S.why.every(w=>words(w)>=4)&&looksLikeFiller(S.why.join(". ")))e.push(`5 Whys: your chain ${FILLER_MSG}, with each "why" explaining the one before it.`);
   S.mc.forEach((r,i)=>{const n=i+1;
     if(!r.m)e.push(`Moment of choice ${n}: choose a moment.`);
     if(!r.judge)e.push(`Moment of choice ${n}: judge it.`);
     if(!r.virtue)e.push(`Moment of choice ${n}: name the virtue.`);
     if(words(r.hard)<12)e.push(`Moment of choice ${n}: explain what made the right action hard (12+ words, ${words(r.hard)} so far).`);
-    if(words(r.wise)<12)e.push(`Moment of choice ${n}: describe practical wisdom or a system change (12+ words, ${words(r.wise)} so far).`);});
+    if(words(r.wise)<12)e.push(`Moment of choice ${n}: describe practical wisdom or a system change (12+ words, ${words(r.wise)} so far).`);
+    if(words(r.hard)>=12&&looksLikeFiller(r.hard))e.push(`Moment of choice ${n}: "what made it hard" ${FILLER_MSG}.`);
+    if(words(r.wise)>=12&&looksLikeFiller(r.wise))e.push(`Moment of choice ${n}: "practical wisdom" ${FILLER_MSG}.`);});
   const ms=S.mc.map(r=>r.m).filter(Boolean);
   if(new Set(ms).size<ms.length)e.push("Choose three different moments of choice.");
   if(!S.mc.some(r=>r.judge==="Virtue shown"))e.push("At least one moment should be one where a virtue was shown. Investigations learn from what went right, too.");
@@ -383,7 +398,8 @@ function rcaErrors(){
     if(!r.h||!hypById(r.h))e.push(`Root cause ${n}: choose one from your list.`);
     if(r.cards.length<2)e.push(`Root cause ${n}: link at least 2 evidence cards.`);
     if(!r.type)e.push(`Root cause ${n}: classify it.`);
-    if(words(r.fix)<12)e.push(`Root cause ${n}: propose a prevention in at least 12 words (${words(r.fix)} so far).`);});
+    if(words(r.fix)<12)e.push(`Root cause ${n}: propose a prevention in at least 12 words (${words(r.fix)} so far).`);
+    else if(looksLikeFiller(r.fix))e.push(`Root cause ${n}: your prevention ${FILLER_MSG}.`);});
   const hs=S.top.map(r=>r.h).filter(Boolean);
   if(new Set(hs).size<hs.length)e.push("Your three root causes must be different.");
   if(aiOn()&&!coached("whys"))e.push("Ask the coach about your 5 Whys at least once.");
@@ -456,7 +472,7 @@ function needs(st){
     if(!S.labDone.b)n.push("Problem 2: get all answers correct.");else if(!hasUp("b"))n.push("Problem 2: upload your work.");
   }
   if(st==="rca")return rcaErrors().length?["See the list of what's still needed just above."]:[];
-  if(st==="reflect"){[["r1",1],["r2",2],["r3",3]].forEach(([k,i])=>{const w=words(S[k]);if(w<40)n.push(`Question ${i}: ${w} of 40 words.`);});}
+  if(st==="reflect"){[["r1",1],["r2",2],["r3",3]].forEach(([k,i])=>{const w=words(S[k]);if(w<40)n.push(`Question ${i}: ${w} of 40 words.`);else if(looksLikeFiller(S[k]))n.push(`Question ${i} ${FILLER_MSG}.`);});}
   return n;
 }
 function needsHTML(){if(done(S.stage))return "";const n=needs(S.stage);return n.length?`<div class="fb" style="margin-top:-4px"><b>To continue:</b><ul style="margin:4px 0 0;padding-left:20px">${n.map(x=>`<li>${esc(x)}</li>`).join("")}</ul></div>`:"";}
@@ -799,14 +815,60 @@ function reportText(){
   const own=PEOPLE.filter(x=>S.chat[x.id].length);
   if(own.length){t+=`MY INTERVIEW QUESTIONS\n`;own.forEach(x=>{const tt=(S.test||{})[x.id];const h=tt&&hypById(tt.h);t+=`With ${x.name} (${x.role})${h?`, testing my guess "${h.t}"`:""}:\n${tr(S.chat[x.id])}\n\n`;});}
   if(S.coach.whys.length||S.coach.moments.length){t+=`COACH CONVERSATIONS\n`;["whys","moments"].forEach(k=>{if(S.coach[k].length)t+=`${k==="whys"?"5 Whys":"Moments of choice"}:\n${tr(S.coach[k])}\n\n`;});}
-  t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my current work:${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
+  const q=S.quality||{};
+  if(q.latest){const fmtq=x=>QC.map(([k,l])=>`${l}: ${x.res[k].level}`).join("; ");
+    t+=`AI QUALITY CHECK (advisory; your instructor makes final grading decisions)\n  Checks run: ${q.checks}\n  First check: ${fmtq(q.first)}\n  Latest check: ${fmtq(q.latest)}${q.hash!==String(fnv(compileWork()))?"\n  (Work was changed after the latest check.)":""}\n  Latest suggestions:\n${QC.map(([k,l])=>`   - ${l} (${q.latest.res[k].level}): ${q.latest.res[k].feedback}`).join("\n")}\n\n`;}
+  else t+=`AI QUALITY CHECK: not run\n\n`;
+  t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my current work: ${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
   return t;
+}
+/* ---- AI quality check (advisory; the instructor makes final grading decisions) ---- */
+const QC=[["investigation","Investigation"],["whys","5 Whys"],["moments","Moments of choice"],["rootcauses","Root causes and prevention"],["reflections","Reflections"]];
+function compileWork(){
+  let t="FIRST LIST OF GUESSES (with verdicts after the interviews)\n";
+  vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t} -> ${h.s||"(no verdict)"}\n`;});
+  t+="\nNEW CAUSES FROM INTERVIEWS\n";intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
+  t+="\nTEST QUESTIONS\n";PEOPLE.forEach(x=>{const tt=(S.test||{})[x.id];if(tt){const h=hypById(tt.h);t+=`- To the ${x.role}, testing "${h?h.t:""}": ${tt.q}\n`;}});
+  t+="\n5 WHYS (problem: the northbound I-95 overpass collapsed)\n";S.why.forEach((w,i)=>{t+=`Why ${i+1}: ${w.trim()}\n`;});
+  t+="\nMOMENTS OF CHOICE\n";S.mc.forEach((r,i)=>{const c=CARDS[r.m]||{who:"",t:""};t+=`${i+1}. ${c.who}: ${c.t}\n   Judgment: ${r.judge}; virtue: ${r.virtue}\n   What made it hard: ${r.hard.trim()}\n   Practical wisdom / system change: ${r.wise.trim()}\n`;});
+  const cards=allCards();
+  t+="\nTOP ROOT CAUSES\n";S.top.forEach((r,i)=>{const h=hypById(r.h)||{t:"",c:""};t+=`${i+1}. ${h.t} [${h.c}] (${r.type})\n   Evidence: ${r.cards.map(c=>cards[c]?cards[c].t:"").join(" | ")}\n   Prevention: ${r.fix.trim()}\n`;});
+  t+=`\nREFLECTIONS\n1. How my thinking changed: ${S.r1.trim()}\n2. A virtue in my current work: ${S.r2.trim()}\n3. Materials: ${(S.r3||"").trim()}\n`;
+  return t;
+}
+let qcBusy=false;
+async function runQuality(){
+  if(qcBusy)return;qcBusy=true;S._qcmsg="";render();
+  const work=compileWork();
+  try{
+    const reply=await callAI({mode:"grade",messages:[{role:"user",content:work}]});
+    const j=JSON.parse(reply.slice(reply.indexOf("{"),reply.lastIndexOf("}")+1));
+    const res={};(j.criteria||[]).forEach(c=>{if(c&&c.id)res[c.id]={level:c.level,feedback:c.feedback};});
+    if(!QC.every(([k])=>res[k]&&["Strong","Developing","Beginning"].includes(res[k].level)))throw new Error("format");
+    const q=S.quality;q.checks++;q.latest={res,at:new Date().toISOString()};if(!q.first)q.first=q.latest;q.hash=String(fnv(work));
+  }catch(e){S._qcmsg=e.message==="format"?"The check didn't come back in a readable form. Please try again.":aiError();}
+  qcBusy=false;save();render();
+}
+function qcHTML(){
+  if(!AI_URL)return "";
+  const q=S.quality,L=q.latest,changed=L&&q.hash!==String(fnv(compileWork()));
+  const badge=l=>`<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:.8rem;font-weight:700;color:#fff;background:${l==="Strong"?"#2e7d32":l==="Developing"?"#b26a00":"#b00020"}">${l}</span>`;
+  const anyBeg=L&&QC.some(([k])=>L.res[k].level==="Beginning");
+  return `<div class="card" style="border:2px solid var(--gold)"><h3 style="margin-top:0">Check the quality of your work</h3>
+  <p class="note" style="margin-top:0">An AI reviewer reads your analysis and reflections and rates each part as Strong, Developing, or Beginning, with a suggestion for each. It won't write anything for you. You can revise and check as many times as you like. Your instructor sees your first and latest results and makes the final grading decisions.</p>
+  ${S._qcmsg?`<div class="fb">${esc(S._qcmsg)}</div>`:""}
+  ${L?`<table style="width:100%"><tr><th style="text-align:left">Part</th><th>Rating</th><th style="text-align:left">Suggestion</th></tr>${QC.map(([k,l])=>`<tr><td style="text-align:left"><b>${l}</b></td><td>${badge(L.res[k].level)}</td><td style="text-align:left">${esc(L.res[k].feedback||"")}</td></tr>`).join("")}</table>
+    ${anyBeg?`<div class="fb"><b>Part of your work was rated Beginning.</b> You can still submit, but we encourage you to revise it first. Use the tabs at the top to go back, improve your answers, then check again and download a new report.</div>`:`<div class="good" style="background:#e8f5e9;border-left:4px solid var(--ok);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0">Nice work. You can still revise any part and check again.</div>`}
+    ${changed?`<p class="note"><b>You've changed your work since the last check.</b> Check again to update your ratings.</p>`:""}`:""}
+  <p style="margin-bottom:0"><button class="btn ${L?"alt":""}" ${qcBusy||!aiOn()?"disabled":""} onclick="runQuality()">${qcBusy?"Checking…":L?"Check my work again":"Check my work"}</button> <span class="note">Checks so far: ${q.checks}</span></p>
+  ${!aiOn()?'<p class="note">The quality check isn\'t available right now. You can still download and submit your report.</p>':""}</div>`;
 }
 function vReport(){
   const miss=["a","b"].filter(p=>!hasUp(p));
   return `<div class="card"><h2>Your report</h2>
   <p>Investigator code: <b>${esc(S.name)}</b> &nbsp; Completion code: <span class="code">${code(S.name)}</span></p>
   ${miss.length?`<div class="fb">Your handwritten work for ${miss.map(p=>PROB[p]).join(" and ")} isn't in this browser (did you switch devices?). Upload it below so it's included in your PDF.</div>${miss.map(uploadHTML).join("")}`:""}
+  ${qcHTML()}
   <div class="noprint"><p><b>To submit:</b> download your PDF and upload it to the Canvas assignment. It includes this report and all your handwritten work.</p>
   <p><button class="btn" ${miss.length?"disabled":""} onclick="downloadPDF(this)">Download my PDF report</button> <button class="btn alt" onclick="copyRep(this)">Copy report text</button></p>
   <div id="pdfmsg" class="note"></div></div>
@@ -851,7 +913,11 @@ async function handleUpload(part,list){
 function uploadHTML(part){
   const mine=FILES.filter(f=>f.prob===part);const um=S._upmsg&&S._upmsg.part===part?S._upmsg.msgs:[];
   return `<div class="chat"><h4>Upload your work for ${PROB[part]}</h4>
-  <p class="note" style="margin:0">Clear photos or a scan of your Given, Find, and Solution${part==="b"?", including your stress element and Mohr's circle":", including your c and I calculation, σ = Mc/I, and factors of safety"}. Upload every page. These go into the PDF you submit.</p>
+  <p class="note" style="margin:0">Clear photos or a scan of your work${part==="b"?", including your stress element and Mohr's circle":", including your c and I calculation, σ = Mc/I, and factors of safety"}. Upload every page. These go into the PDF you submit.</p>
+  <div class="say" style="margin:8px 0 0"><b>Format your work like homework,</b> with three labeled sections:<br>
+  <b>Given:</b> the values and information from the problem<br>
+  <b>Find:</b> what you're solving for<br>
+  <b>Solution:</b> your diagrams, equations, and calculations, with units</div>
   <div style="display:flex;flex-wrap:wrap;gap:8px;margin:8px 0">${mine.map(f=>`<div style="border:1px solid var(--line);border-radius:6px;padding:4px;background:#fff;text-align:center;font-size:.75rem;max-width:130px">${f.type==="jpg"?`<img src="${f.data}" alt="${esc(f.name)}" style="height:90px;display:block;margin:0 auto 2px">`:`<div style="font-size:2rem">📄</div>`}${esc(f.name.slice(0,22))}<br><button class="btn alt sm" data-rm="${f.id}">Remove</button></div>`).join("")}</div>
   ${mine.length?`<p class="ok msg" style="margin:0">✓ ${mine.length} file${mine.length>1?"s":""} uploaded. Add more pages if needed.</p>`:`<p class="bad msg" style="margin:0">Required before you can continue.</p>`}
   ${um.map(m=>`<div class="fb">${esc(m)}</div>`).join("")}
