@@ -796,6 +796,7 @@ function vReflect(){
 function reportText(){
   const p=P(),cards=allCards();
   let t=`THE I-95 COLLAPSE INVESTIGATION: EGR 343\nInvestigator code: ${S.name}\nCompletion code: ${code(S.name)}\n\n`;
+  t+=qcReport();
   t+=`FIRST LIST (from the video), with verdicts after the interviews\n`;
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t}  ->  ${h.s}\n`;});
   t+=`\nNEW CAUSES FROM THE INTERVIEWS\n`;intHyps().filter(okHyp).forEach(h=>{t+=`- [${h.c}] ${h.t}\n`;});
@@ -815,12 +816,18 @@ function reportText(){
   const own=PEOPLE.filter(x=>S.chat[x.id].length);
   if(own.length){t+=`MY INTERVIEW QUESTIONS\n`;own.forEach(x=>{const tt=(S.test||{})[x.id];const h=tt&&hypById(tt.h);t+=`With ${x.name} (${x.role})${h?`, testing my guess "${h.t}"`:""}:\n${tr(S.chat[x.id])}\n\n`;});}
   if(S.coach.whys.length||S.coach.moments.length){t+=`COACH CONVERSATIONS\n`;["whys","moments"].forEach(k=>{if(S.coach[k].length)t+=`${k==="whys"?"5 Whys":"Moments of choice"}:\n${tr(S.coach[k])}\n\n`;});}
-  const q=S.quality||{};
-  if(q.latest){const fmtq=x=>QC.map(([k,l])=>`${l}: ${x.res[k].level}`).join("; ");
-    t+=`AI QUALITY CHECK (advisory; your instructor makes final grading decisions)\n  Checks run: ${q.checks}\n  First check: ${fmtq(q.first)}\n  Latest check: ${fmtq(q.latest)}${q.hash!==String(fnv(compileWork()))?"\n  (Work was changed after the latest check.)":""}\n  Latest suggestions:\n${QC.map(([k,l])=>`   - ${l} (${q.latest.res[k].level}): ${q.latest.res[k].feedback}`).join("\n")}\n\n`;}
-  else t+=`AI QUALITY CHECK: not run\n\n`;
   t+=`REFLECTION\n1. Video vs. final analysis: ${S.r1.trim()}\n\n2. Virtues in my current work: ${S.r2.trim()}\n\n3. Materials: ${(S.r3||"").trim()}\n`;
   return t;
+}
+/* Latest AI quality check, placed at the top of the report so it's easy to grade from. */
+function qcReport(){
+  const q=S.quality||{};
+  if(!q.latest)return `AI QUALITY CHECK\nNot run.\n\n`;
+  const d=x=>new Date(x.at).toLocaleString();
+  let t=`AI QUALITY CHECK\nAdvisory only; your instructor makes the final grading decisions.\nChecks run: ${q.checks}. Latest check: ${d(q.latest)}.${q.hash!==String(fnv(compileWork()))?" Work was changed after the latest check.":""}\n`;
+  QC.forEach(([k,l])=>{const r=q.latest.res[k],f=q.first.res[k];
+    t+=`- ${l}: ${r.level}${q.checks>1&&f.level!==r.level?` (first check: ${f.level})`:""}\n   ${r.feedback}\n`;});
+  return t+`\n`;
 }
 /* ---- AI quality check (advisory; the instructor makes final grading decisions) ---- */
 const QC=[["investigation","Investigation"],["whys","5 Whys"],["moments","Moments of choice"],["rootcauses","Root causes and prevention"],["reflections","Reflections"]];
