@@ -494,6 +494,7 @@ function vVideo(){
    <li><b>Don't use a private or incognito window.</b> Your work won't be saved.</li>
    <li><b>There are no time limits.</b> You can work at your own pace. Prefer to speak instead of type? Your device's built-in dictation works in every text box. Characters' answers have a <b>Listen</b> button.</li>
    <li><b>Content note:</b> this case involves a fatal crash. The truck driver died. The game treats him with respect, and you can pause at any time. If this topic is hard for you, reach out to your instructor.</li>
+   <li><b>Grading:</b> see how each part of your work counts below.${rubricHTML(false)}</li>
    <li><b>Accommodations:</b> if you use a screen reader, can't write by hand, or need another format, contact your instructor. Typed or tablet work is accepted in place of handwriting.</li>
   </ul></div>
   <div class="card"><h2>Watch and make your first guesses</h2>
@@ -826,11 +827,21 @@ function qcReport(){
   const d=x=>new Date(x.at).toLocaleString();
   let t=`AI QUALITY CHECK\nAdvisory only; your instructor makes the final grading decisions.\nChecks run: ${q.checks}. Latest check: ${d(q.latest)}.${q.hash!==String(fnv(compileWork()))?" Work was changed after the latest check.":""}\n`;
   QC.forEach(([k,l])=>{const r=q.latest.res[k],f=q.first.res[k];
-    t+=`- ${l}: ${r.level}${q.checks>1&&f.level!==r.level?` (first check: ${f.level})`:""}\n   ${r.feedback}\n`;});
+    t+=`- ${l} (Objective ${QCOBJ[k]}): ${r.level}${q.checks>1&&f.level!==r.level?` (first check: ${f.level})`:""}\n   ${r.feedback}\n`;});
   return t+`\n`;
 }
 /* ---- AI quality check (advisory; the instructor makes final grading decisions) ---- */
 const QC=[["investigation","Investigation"],["whys","5 Whys"],["moments","Moments of choice"],["rootcauses","Root causes and prevention"],["reflections","Reflections"]];
+const QCOBJ={investigation:"3",whys:"3",moments:"4",rootcauses:"3",reflections:"1, 3, 4"};
+/* The grading rubric, shown to students so they see how each part of their work counts. */
+const RUBRIC=[
+ ["1. Bending, factor of safety and temperature",36,"Problem 1 answers and your handwritten work (Given / Find / Solution, with units), plus Reflection 3: how temperature changes steel's strength."],
+ ["2. Mohr's circle",24,"Problem 2 answers and your handwritten work, including a labeled stress element and Mohr's circle."],
+ ["3. Root cause analysis",36,"Testing your guesses, your updated list, fishbone, 5 Whys, top 3 root causes with evidence and preventions, plus Reflection 1."],
+ ["4. Engineering decisions and virtues",24,"Your three moments of choice (pressures, virtues, system changes), plus Reflection 2 from your own work."]];
+const rubricHTML=(open)=>`<details ${open?"open":""} style="margin:8px 0"><summary style="cursor:pointer;font-weight:700;color:var(--maroon)">How you'll be graded (120 points, one part per learning objective)</summary>
+  <table style="width:100%"><tr><th style="text-align:left">Learning objective</th><th>Points</th><th style="text-align:left">What counts</th></tr>${RUBRIC.map(([o,p,w])=>`<tr><td style="text-align:left"><b>${o}</b></td><td>${p}</td><td style="text-align:left">${w}</td></tr>`).join("")}</table>
+  <p class="note" style="margin:4px 0 0">Full credit needs both correct answers and clear work that supports them. Your instructor grades your work; the AI quality check is feedback only.</p></details>`;
 function compileWork(){
   let t="FIRST LIST OF GUESSES (with verdicts after the interviews)\n";
   vidHyps().forEach(h=>{t+=`- [${h.c}] ${h.t} -> ${h.s||"(no verdict)"}\n`;});
@@ -864,7 +875,7 @@ function qcHTML(){
   return `<div class="card" style="border:2px solid var(--gold)"><h3 style="margin-top:0">Check the quality of your work</h3>
   <p class="note" style="margin-top:0">An AI reviewer reads your analysis and reflections and rates each part as Strong, Developing, or Beginning, with a suggestion for each. It won't write anything for you. You can revise and check as many times as you like. Your instructor sees your first and latest results and makes the final grading decisions.</p>
   ${S._qcmsg?`<div class="fb">${esc(S._qcmsg)}</div>`:""}
-  ${L?`<table style="width:100%"><tr><th style="text-align:left">Part</th><th>Rating</th><th style="text-align:left">Suggestion</th></tr>${QC.map(([k,l])=>`<tr><td style="text-align:left"><b>${l}</b></td><td>${badge(L.res[k].level)}</td><td style="text-align:left">${esc(L.res[k].feedback||"")}</td></tr>`).join("")}</table>
+  ${L?`<table style="width:100%"><tr><th style="text-align:left">Part</th><th>Rating</th><th style="text-align:left">Suggestion</th></tr>${QC.map(([k,l])=>`<tr><td style="text-align:left"><b>${l}</b><br><span class="note">Objective ${QCOBJ[k]}</span></td><td>${badge(L.res[k].level)}</td><td style="text-align:left">${esc(L.res[k].feedback||"")}</td></tr>`).join("")}</table>
     ${anyBeg?`<div class="fb"><b>Part of your work was rated Beginning.</b> You can still submit, but we encourage you to revise it first. Use the tabs at the top to go back, improve your answers, then check again and download a new report.</div>`:`<div class="good" style="background:#e8f5e9;border-left:4px solid var(--ok);padding:6px 10px;border-radius:0 6px 6px 0;margin:6px 0">Nice work. You can still revise any part and check again.</div>`}
     ${changed?`<p class="note"><b>You've changed your work since the last check.</b> Check again to update your ratings.</p>`:""}`:""}
   <p style="margin-bottom:0"><button class="btn ${L?"alt":""}" ${qcBusy||!aiOn()?"disabled":""} onclick="runQuality()">${qcBusy?"Checking…":L?"Check my work again":"Check my work"}</button> <span class="note">Checks so far: ${q.checks}</span></p>
@@ -875,6 +886,7 @@ function vReport(){
   return `<div class="card"><h2>Your report</h2>
   <p>Investigator code: <b>${esc(S.name)}</b> &nbsp; Completion code: <span class="code">${code(S.name)}</span></p>
   ${miss.length?`<div class="fb">Your handwritten work for ${miss.map(p=>PROB[p]).join(" and ")} isn't in this browser (did you switch devices?). Upload it below so it's included in your PDF.</div>${miss.map(uploadHTML).join("")}`:""}
+  ${rubricHTML(false)}
   ${qcHTML()}
   <div class="noprint"><p><b>To submit:</b> download your PDF and upload it to the Canvas assignment. It includes this report and all your handwritten work.</p>
   <p><button class="btn" ${miss.length?"disabled":""} onclick="downloadPDF(this)">Download my PDF report</button> <button class="btn alt" onclick="copyRep(this)">Copy report text</button></p>
